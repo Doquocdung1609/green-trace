@@ -1,0 +1,136 @@
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
+import Header from "../../components/ui/Header";
+import Footer from "../../components/ui/Footer";
+import ProductCard from "../../components/ui/ProductCard";
+import { fetchProducts } from "../../services/api";
+import { useQuery } from "@tanstack/react-query";
+import { Input } from "../../components/ui/input";
+import { Filter, MapPin, Tag } from "lucide-react";
+
+const Market = () => {
+  const { data: products, isLoading, isError } = useQuery({
+    queryKey: ["products"],
+    queryFn: fetchProducts,
+  });
+
+  const [filter, setFilter] = useState({ type: "", price: "", location: "" });
+
+  const filteredProducts = products?.filter((product) => {
+    const matchesType = filter.type ? product.name.toLowerCase().includes(filter.type.toLowerCase()) : true;
+    const matchesPrice = filter.price ? product.price <= Number(filter.price) : true;
+    const matchesLocation = filter.location ? product.origin.toLowerCase().includes(filter.location.toLowerCase()) : true;
+    return matchesType && matchesPrice && matchesLocation;
+  });
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white dark:from-gray-900 dark:to-gray-800">
+      <Header />
+
+      {/* 🌿 Hero */}
+      <section className="relative bg-green-600 text-white text-center py-20 shadow-md">
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center opacity-20"></div>
+        <motion.h1
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="relative text-5xl font-bold"
+        >
+          🌾 Thị trường nông sản
+        </motion.h1>
+        <p className="relative text-lg mt-3 opacity-90">
+          Khám phá và mua sắm nông sản minh bạch – truy xuất tận gốc với GreenTrace
+        </p>
+      </section>
+
+      {/* Main Section */}
+      <section className="p-6 max-w-7xl mx-auto flex gap-6">
+        {/* Sidebar */}
+        <motion.aside
+          initial={{ x: -50, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.6 }}
+          className="w-1/4 p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-green-100 dark:border-gray-700"
+        >
+          <h2 className="text-xl font-bold mb-4 text-green-600 flex items-center gap-2">
+            <Filter className="w-5 h-5" /> Bộ lọc
+          </h2>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-1 mb-1">
+                <Tag className="w-4 h-4" /> Loại sản phẩm
+              </label>
+              <Select onValueChange={(v) => setFilter({ ...filter, type: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn loại" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Cà phê">Cà phê</SelectItem>
+                  <SelectItem value="Rau củ">Rau củ</SelectItem>
+                  <SelectItem value="Trái cây">Trái cây</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm text-gray-600 dark:text-gray-300 mb-1">Giá tối đa (VND)</label>
+              <Input
+                placeholder="VD: 100000"
+                type="number"
+                onChange={(e) => setFilter({ ...filter, price: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-1 mb-1">
+                <MapPin className="w-4 h-4" /> Khu vực
+              </label>
+              <Input
+                placeholder="VD: Đắk Lắk"
+                onChange={(e) => setFilter({ ...filter, location: e.target.value })}
+              />
+            </div>
+          </div>
+        </motion.aside>
+
+        {/* Products */}
+        <motion.main
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.7 }}
+          className="w-3/4"
+        >
+          <h1 className="text-3xl font-bold mb-6 text-green-700 dark:text-green-400">Sản phẩm hiện có</h1>
+          {isLoading ? (
+            <p className="text-center">Đang tải sản phẩm...</p>
+          ) : isError ? (
+            <p className="text-center text-red-500">Lỗi khi tải sản phẩm</p>
+          ) : (
+            <motion.div
+              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ staggerChildren: 0.15 }}
+            >
+              {filteredProducts?.map((product) => (
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <ProductCard product={product} />
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </motion.main>
+      </section>
+
+      <Footer />
+    </div>
+  );
+};
+
+export default Market;
