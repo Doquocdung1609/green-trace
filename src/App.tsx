@@ -23,7 +23,6 @@ import ProductDetail from './pages/customer/ProductDetail';
 import Cart from './pages/customer/Cart';
 import Checkout from './pages/customer/Checkout';
 import CustomerOrders from './pages/customer/Orders';
-import CustomerTrace from './pages/customer/Trace';
 import CustomerProfile from './pages/customer/Profile';
 import { Toaster } from './components/ui/toaster';
 import CustomerLayout from './pages/customer/CustomerLayout';
@@ -82,7 +81,6 @@ function App() {
                   <Route path="/cart" element={<Cart />} />
                   <Route path="/checkout" element={<Checkout />} />
                   <Route path="/orders" element={<CustomerOrders />} />
-                  <Route path="/trace/:productId" element={<CustomerTrace />} />
                   <Route path="/profile" element={<CustomerProfile />} />
                 </Route>
               </Route>
