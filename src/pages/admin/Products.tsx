@@ -1,4 +1,4 @@
-// Products.tsx (updated to use shared Product interface)
+// Products.tsx
 import React from 'react';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
@@ -6,7 +6,7 @@ import { Button } from '../../components/ui/button';
 import { fetchProducts } from '../../services/api';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Leaf } from 'lucide-react';
+import { Leaf, CheckCircle, XCircle } from 'lucide-react';
 import type { Product } from '../../types/types';
 
 const Products: React.FC = () => {
@@ -39,6 +39,8 @@ const Products: React.FC = () => {
               <TableRow className="bg-green-50 dark:bg-gray-700">
                 <TableHead>Tên</TableHead>
                 <TableHead>Giá (VNĐ)</TableHead>
+                <TableHead>Số lượng</TableHead>
+                <TableHead>Còn hàng</TableHead>
                 <TableHead>Thao tác</TableHead>
               </TableRow>
             </TableHeader>
@@ -53,6 +55,10 @@ const Products: React.FC = () => {
                 >
                   <TableCell>{product.name}</TableCell>
                   <TableCell>{product.price.toLocaleString('vi-VN')}</TableCell>
+                  <TableCell>{product.quantity}</TableCell>
+                  <TableCell>
+                    {product.inStock ? <CheckCircle className="text-green-600" /> : <XCircle className="text-red-600" />}
+                  </TableCell>
                   <TableCell className="flex gap-2">
                     <Button variant="outline" className="hover:bg-green-100">Sửa</Button>
                     <Button variant="destructive">Xóa</Button>

@@ -10,7 +10,7 @@ const DashboardLayout = ({ children, role }: { children: React.ReactNode; role: 
       ? [
           { path: "/farmer/dashboard", label: "Tổng quan" },
           { path: "/farmer/products", label: "Sản phẩm" },
-          { path: "/farmer/add-product", label: "Thêm sản phẩm" },
+          { path: "/farmer/trace", label: "Truy xuất nguồn gốc" },
           { path: "/farmer/orders", label: "Đơn hàng" },
         ]
       : [

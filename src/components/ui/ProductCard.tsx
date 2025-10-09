@@ -1,9 +1,9 @@
-// ProductCard.tsx (updated to use shared Product interface)
+// ProductCard.tsx
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader } from './card';
 import { Button } from './button';
 import { Link } from 'react-router-dom';
-import { Leaf } from 'lucide-react';
+import { Leaf, AlertCircle } from 'lucide-react';
 import type { Product } from '../../types/types';
 
 const ProductCard = ({ product }: { product: Product }) => (
@@ -22,6 +22,11 @@ const ProductCard = ({ product }: { product: Product }) => (
         <div className="absolute top-3 left-3 bg-green-600 text-white text-xs px-3 py-1 rounded-full shadow">
           Nông sản sạch
         </div>
+        {!product.inStock && (
+          <div className="absolute top-3 right-3 bg-red-600 text-white text-xs px-3 py-1 rounded-full shadow flex items-center">
+            <AlertCircle className="w-4 h-4 mr-1" /> Hết hàng
+          </div>
+        )}
       </CardHeader>
 
       <CardContent className="p-5 space-y-3 text-center">
@@ -29,13 +34,16 @@ const ProductCard = ({ product }: { product: Product }) => (
           {product.name}
         </h3>
         <p className="text-sm text-gray-500 dark:text-gray-400 italic">
-          Xuất xứ: {product.origin}
+          Xuất xứ: {product.origin} | Số lượng: {product.quantity}
         </p>
         <p className="text-2xl font-bold text-green-600">
           {product.price.toLocaleString('vi-VN')} VNĐ/kg
         </p>
         <Link to={`/product/${product.id}`}>
-          <Button className="mt-2 w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-medium rounded-full">
+          <Button 
+            className="mt-2 w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-medium rounded-full"
+            disabled={!product.inStock}
+          >
             <Leaf className="w-4 h-4 mr-2" /> Xem chi tiết
           </Button>
         </Link>
