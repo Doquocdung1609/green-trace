@@ -1,16 +1,10 @@
+// ProductCard.tsx (updated to use shared Product interface)
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader } from './card';
 import { Button } from './button';
 import { Link } from 'react-router-dom';
 import { Leaf } from 'lucide-react';
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  image: string;
-  origin: string;
-}
+import type { Product } from '../../types/types';
 
 const ProductCard = ({ product }: { product: Product }) => (
   <motion.div

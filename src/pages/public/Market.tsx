@@ -1,3 +1,4 @@
+// Market.tsx (updated to use shared Product interface)
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
@@ -8,6 +9,7 @@ import { fetchProducts } from "../../services/api";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "../../components/ui/input";
 import { Filter, MapPin, Tag } from "lucide-react";
+import type { Product } from "../../types/types";
 
 const Market = () => {
   const { data: products, isLoading, isError } = useQuery({
@@ -17,7 +19,7 @@ const Market = () => {
 
   const [filter, setFilter] = useState({ type: "", price: "", location: "" });
 
-  const filteredProducts = products?.filter((product) => {
+  const filteredProducts = products?.filter((product: Product) => {
     const matchesType = filter.type ? product.name.toLowerCase().includes(filter.type.toLowerCase()) : true;
     const matchesPrice = filter.price ? product.price <= Number(filter.price) : true;
     const matchesLocation = filter.location ? product.origin.toLowerCase().includes(filter.location.toLowerCase()) : true;

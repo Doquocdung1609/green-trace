@@ -1,3 +1,4 @@
+// api.ts (updated with mock data consolidated; no changes needed to data as it's already comprehensive)
 export const fetchProducts = async () => {
   return [
     { id: '1', name: 'Cà phê Đắk Lắk', price: 200000, image: 'https://daklakmuseum.vn/baotangdaklak/imgs/166682075163094.jpeg', origin: 'Đắk Lắk' },

@@ -1,3 +1,4 @@
+// ProductDetail.tsx (updated to use shared Product interface)
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -7,14 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "../../components/ui/ta
 import QRViewer from "../../components/ui/QRViewer";
 import { Leaf, Truck, ClipboardCheck, Store, Utensils, Sprout, QrCode } from "lucide-react";
 import Notification from "../../components/ui/ToastNotification";
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  image: string;
-  origin: string;
-}
+import type { Product } from "../../types/types";
 
 
 const ProductDetail = () => {

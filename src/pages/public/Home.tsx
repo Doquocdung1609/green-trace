@@ -1,3 +1,4 @@
+// Home.tsx (updated to use shared Product interface)
 import { motion } from 'framer-motion';
 import { Parallax } from 'react-parallax';
 import Lottie from 'lottie-react';
@@ -8,6 +9,7 @@ import ProductCard from '../../components/ui/ProductCard';
 import { fetchProducts } from '../../services/api';
 import { useQuery } from '@tanstack/react-query';
 import { Leaf, ShoppingBag, ShieldCheck } from 'lucide-react';
+import type { Product } from '../../types/types';
 
 const Home = () => {
   const { data: products, isLoading, isError } = useQuery({
@@ -104,7 +106,7 @@ const Home = () => {
             animate={{ opacity: 1 }}
             transition={{ staggerChildren: 0.15 }}
           >
-            {products?.map((product) => (
+            {products?.map((product: Product) => (
               <motion.div key={product.id}>
                 <ProductCard product={product} />
               </motion.div>
