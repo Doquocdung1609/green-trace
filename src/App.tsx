@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './contexts/AuthContext';
@@ -30,7 +29,6 @@ import Users from './pages/admin/Users';
 import Products from './pages/admin/Products';
 import Reports from './pages/admin/Reports';
 import Transactions from './pages/admin/Transactions';
-import Orders from './pages/farmer/Orders';
 import AdminOrders from './pages/admin/Orders';
 
 const queryClient = new QueryClient();

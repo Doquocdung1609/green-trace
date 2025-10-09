@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { Parallax } from 'react-parallax';
 import Lottie from 'lottie-react';
