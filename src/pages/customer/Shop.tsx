@@ -76,7 +76,7 @@ const Shop = () => {
             </h2>
 
             <Input
-              placeholder="🔍 Tìm sản phẩm..."
+              placeholder="Tìm sản phẩm..."
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);

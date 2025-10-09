@@ -5,7 +5,7 @@ import { fetchProducts } from "../../services/api";
 import { Button } from "../../components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../../components/ui/tabs";
 import QRViewer from "../../components/ui/QRViewer";
-import { Leaf, Truck, ClipboardCheck, Store, Utensils, Sprout } from "lucide-react";
+import { Leaf, Truck, ClipboardCheck, Store, Utensils, Sprout, QrCode } from "lucide-react";
 
 interface Product {
   id: string;
@@ -31,18 +31,15 @@ const ProductDetail = () => {
   }, [id]);
 
   const addToCart = () => {
-  if (!product) return;
-  const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-  const existing = cart.find((i: any) => i.id === product.id);
-  if (existing) existing.quantity += 1;
-  else cart.push({ ...product, quantity: 1 });
-  localStorage.setItem("cart", JSON.stringify(cart));
-
-  // 🔥 Bắn sự kiện thông báo cập nhật giỏ hàng
-  window.dispatchEvent(new Event("cartUpdated"));
-
-  alert("✅ Đã thêm vào giỏ hàng!");
-};
+    if (!product) return;
+    const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+    const existing = cart.find((i: any) => i.id === product.id);
+    if (existing) existing.quantity += 1;
+    else cart.push({ ...product, quantity: 1 });
+    localStorage.setItem("cart", JSON.stringify(cart));
+    window.dispatchEvent(new Event("cartUpdated"));
+    alert("✅ Đã thêm vào giỏ hàng!");
+  };
 
   if (loading)
     return (
@@ -57,7 +54,6 @@ const ProductDetail = () => {
       </div>
     );
 
-  // 👣 Dữ liệu timeline với ngày tháng cụ thể
   const timelineSteps = [
     {
       icon: <Sprout className="w-8 h-8 text-green-600" />,
@@ -98,35 +94,41 @@ const ProductDetail = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-700 py-14">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-700 py-16">
       {/* 🥦 Phần chi tiết sản phẩm */}
-      <section className="max-w-6xl mx-auto px-6 md:px-10">
-        <div className="flex flex-col md:flex-row gap-10 items-center">
-          <motion.img
-            src={product.image}
-            alt={product.name}
-            className="w-80 h-80 object-cover rounded-3xl shadow-2xl"
-            initial={{ opacity: 0, scale: 0.9 }}
+      <section className="max-w-7xl mx-auto px-6 md:px-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+          <motion.div
+            className="relative group"
+            initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6 }}
-          />
-          <div>
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            <img
+              src={product.image}
+              alt={product.name}
+              className="w-full max-w-md mx-auto object-cover rounded-2xl shadow-xl transition-transform duration-300 group-hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-green-200/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          </motion.div>
+          <div className="space-y-6">
             <motion.h1
-              className="text-4xl font-bold text-green-700 dark:text-green-300 mb-2"
-              initial={{ opacity: 0, y: 30 }}
+              className="text-4xl md:text-5xl font-extrabold text-green-800 dark:text-green-200 tracking-tight"
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
             >
               {product.name}
             </motion.h1>
-            <p className="text-gray-600 dark:text-gray-400 mb-2">
-              Xuất xứ: {product.origin}
+            <p className="text-lg text-gray-600 dark:text-gray-300">
+              <span className="font-semibold">Xuất xứ:</span> {product.origin}
             </p>
-            <p className="text-2xl font-semibold text-green-600 mb-4">
+            <p className="text-3xl font-bold text-green-600 dark:text-green-400">
               {product.price.toLocaleString()} VNĐ
             </p>
             <Button
               onClick={addToCart}
-              className="rounded-full bg-green-600 hover:bg-green-700 text-white px-6 py-2 transition-all"
+              className="rounded-full bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg font-semibold shadow-md transition-all duration-300 hover:shadow-lg"
             >
               🛒 Thêm vào giỏ hàng
             </Button>
@@ -134,38 +136,73 @@ const ProductDetail = () => {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="info" className="mt-10">
-          <TabsList>
-            <TabsTrigger value="info">Thông tin</TabsTrigger>
-            <TabsTrigger value="trace">Truy xuất</TabsTrigger>
+        <Tabs defaultValue="info" className="mt-12">
+          <TabsList className="bg-green-100 dark:bg-gray-800 rounded-full p-1">
+            <TabsTrigger
+              value="info"
+              className="rounded-full px-6 py-2 text-green-700 dark:text-green-300 data-[state=active]:bg-green-600 data-[state=active]:text-white"
+            >
+              Thông tin
+            </TabsTrigger>
+            <TabsTrigger
+              value="trace"
+              className="rounded-full px-6 py-2 text-green-700 dark:text-green-300 data-[state=active]:bg-green-600 data-[state=active]:text-white"
+            >
+              Truy xuất
+            </TabsTrigger>
           </TabsList>
 
           {/* 🌿 Tab: Thông tin */}
           <TabsContent
             value="info"
-            className="p-6 rounded-2xl bg-green-50/60 dark:bg-gray-800 shadow-md mt-4"
+            className="p-8 mt-4 rounded-2xl bg-white/80 dark:bg-gray-800/80 shadow-lg backdrop-blur-sm"
           >
-            <div className="flex items-start gap-3 mb-3">
-              <span className="text-2xl">👨‍🌾</span>
-              <p className="text-gray-800 dark:text-gray-200 font-medium">
-                <strong>Nông dân:</strong> Nguyễn Văn A
-              </p>
-            </div>
-            <div className="flex items-start gap-3">
-              <span className="text-2xl">🌱</span>
-              <p className="text-gray-800 dark:text-gray-200 font-medium leading-relaxed">
-                Sản phẩm đạt chứng nhận{" "}
-                <strong className="text-green-700 dark:text-green-400">
-                  VietGAP
-                </strong>{" "}
-                – canh tác hữu cơ, bảo vệ môi trường và sức khỏe người tiêu dùng.
-              </p>
-            </div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="space-y-4"
+            >
+              <div className="flex items-center gap-4">
+                <span className="text-3xl">👨‍🌾</span>
+                <p className="text-lg text-gray-800 dark:text-gray-200">
+                  <strong>Nông dân:</strong> Nguyễn Văn A
+                </p>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="text-3xl">🌱</span>
+                <p className="text-lg text-gray-800 dark:text-gray-200 leading-relaxed">
+                  Sản phẩm đạt chứng nhận{" "}
+                  <strong className="text-green-700 dark:text-green-400">
+                    VietGAP
+                  </strong>{" "}
+                  – canh tác hữu cơ, bảo vệ môi trường và sức khỏe người tiêu dùng.
+                </p>
+              </div>
+            </motion.div>
           </TabsContent>
 
           {/* 🔍 Tab: Truy xuất */}
-          <TabsContent value="trace" className="flex justify-center p-4 mt-4">
-            <QRViewer value={`https://solanaexplorer.io/tx/${product.id}`} />
+          <TabsContent
+            value="trace"
+            className="p-8 mt-4 rounded-2xl bg-white/80 dark:bg-gray-800/80 shadow-lg backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="space-y-4"
+            >
+              <div className="flex items-center gap-4">
+                <QrCode className="w-8 h-8 text-green-600" />
+                <p className="text-lg text-gray-800 dark:text-gray-200 leading-relaxed">
+                  Quét mã QR để truy xuất nguồn gốc sản phẩm, đảm bảo minh bạch từ nông trại đến tay bạn.
+                </p>
+              </div>
+              <div className="flex justify-center">
+                <QRViewer value={`https://solanaexplorer.io/tx/${product.id}`} />
+              </div>
+            </motion.div>
           </TabsContent>
         </Tabs>
       </section>
@@ -173,7 +210,7 @@ const ProductDetail = () => {
       {/* 🌾 Timeline: Từ nông trại đến bàn ăn */}
       <section className="max-w-5xl mx-auto mt-16 px-6">
         <motion.h2
-          className="text-3xl font-bold text-center text-green-700 dark:text-green-400 mb-10"
+          className="text-3xl md:text-4xl font-bold text-center text-green-800 dark:text-green-300 mb-12"
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
@@ -181,26 +218,30 @@ const ProductDetail = () => {
           Hành trình “Từ nông trại đến bàn ăn”
         </motion.h2>
 
-        <div className="relative border-l-4 border-green-500 ml-4">
+        <div className="relative border-l-4 border-green-500 ml-6">
           {timelineSteps.map((step, i) => (
             <motion.div
               key={i}
-              className="mb-10 ml-6"
+              className="mb-12 ml-8 relative"
               initial={{ opacity: 0, x: -30 }}
               whileInView={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.2 }}
+              transition={{ delay: i * 0.2, duration: 0.5 }}
               viewport={{ once: true }}
             >
-              <span className="absolute -left-6 flex items-center justify-center w-10 h-10 bg-green-100 dark:bg-green-800 rounded-full ring-4 ring-white shadow-md">
+              <span className="absolute -left-10 flex items-center justify-center w-12 h-12 bg-green-100 dark:bg-green-800 rounded-full ring-4 ring-white shadow-md transition-transform duration-300 hover:scale-110">
                 {step.icon}
               </span>
-              <h3 className="text-lg font-semibold text-green-700 dark:text-green-300">
-                {step.title}{" "}
-                <span className="text-sm text-gray-500 ml-2">
-                  ({step.date})
-                </span>
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400">{step.desc}</p>
+              <div className="bg-white/60 dark:bg-gray-800/60 p-4 rounded-lg shadow-md">
+                <h3 className="text-xl font-semibold text-green-700 dark:text-green-300">
+                  {step.title}{" "}
+                  <span className="text-sm text-gray-500 ml-2">
+                    ({step.date})
+                  </span>
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">
+                  {step.desc}
+                </p>
+              </div>
             </motion.div>
           ))}
         </div>
