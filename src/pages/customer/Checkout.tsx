@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -13,6 +13,7 @@ import {
 } from "../../components/ui/form";
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
+import ToastNotification from "../../components/ui/ToastNotification"; // ✅ thêm import
 
 const schema = z.object({
   name: z.string().min(1, "Nhập họ tên"),
@@ -25,13 +26,35 @@ type FormData = z.infer<typeof schema>;
 const Checkout = () => {
   const form = useForm<FormData>({ resolver: zodResolver(schema) });
 
+  // ✅ State để điều khiển Toast
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error" | "info">("info");
+
   const onSubmit = (data: FormData) => {
-    alert(`✅ Đặt hàng thành công!\nTên: ${data.name}\nThanh toán: ${data.payment}`);
-    localStorage.removeItem("cart");
+    try {
+      localStorage.removeItem("cart");
+      setToastMessage(`✅ Đặt hàng thành công!\nTên: ${data.name}\nThanh toán: ${data.payment}`);
+      setToastType("success");
+      setToastVisible(true);
+      form.reset(); // reset form sau khi submit
+    } catch (error) {
+      setToastMessage("❌ Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại!");
+      setToastType("error");
+      setToastVisible(true);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white dark:from-gray-900 dark:to-gray-800">
+      {/* ✅ Hiển thị Toast */}
+      <ToastNotification
+        message={toastMessage}
+        visible={toastVisible}
+        onClose={() => setToastVisible(false)}
+        type={toastType}
+      />
+
       <motion.section
         className="p-6 max-w-lg mx-auto"
         initial={{ opacity: 0, y: 60 }}

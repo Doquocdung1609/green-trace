@@ -6,6 +6,7 @@ import { Button } from "../../components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../../components/ui/tabs";
 import QRViewer from "../../components/ui/QRViewer";
 import { Leaf, Truck, ClipboardCheck, Store, Utensils, Sprout, QrCode } from "lucide-react";
+import Notification from "../../components/ui/ToastNotification";
 
 interface Product {
   id: string;
@@ -14,6 +15,7 @@ interface Product {
   image: string;
   origin: string;
 }
+
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,6 +32,8 @@ const ProductDetail = () => {
     load();
   }, [id]);
 
+  const [showNotif, setShowNotif] = useState(false);
+
   const addToCart = () => {
     if (!product) return;
     const cart = JSON.parse(localStorage.getItem("cart") || "[]");
@@ -38,8 +42,9 @@ const ProductDetail = () => {
     else cart.push({ ...product, quantity: 1 });
     localStorage.setItem("cart", JSON.stringify(cart));
     window.dispatchEvent(new Event("cartUpdated"));
-    alert("✅ Đã thêm vào giỏ hàng!");
+    setShowNotif(true);
   };
+
 
   if (loading)
     return (
@@ -246,6 +251,12 @@ const ProductDetail = () => {
           ))}
         </div>
       </section>
+      <Notification
+        message="Đã thêm sản phẩm vào giỏ hàng!"
+        visible={showNotif}
+        onClose={() => setShowNotif(false)}
+        type="success"
+      />
     </div>
   );
 };

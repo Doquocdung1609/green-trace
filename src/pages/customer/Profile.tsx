@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -13,6 +13,7 @@ import {
 } from "../../components/ui/form";
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
+import ToastNotification from "../../components/ui/ToastNotification"; // ✅ Thêm import
 
 const schema = z.object({
   name: z.string().min(1, "Nhập tên"),
@@ -28,12 +29,34 @@ const Profile = () => {
     defaultValues: { name: "Nguyễn Văn A", email: "a@gmail.com", address: "Hà Nội" },
   });
 
+  // ✅ State điều khiển Toast
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error" | "info">("info");
+
   const onSubmit = (data: FormData) => {
-    alert(`🎉 Đã cập nhật hồ sơ!\n${JSON.stringify(data, null, 2)}`);
+    try {
+      // Giả lập cập nhật thành công
+      setToastMessage(`🎉 Đã cập nhật hồ sơ!\nTên: ${data.name}\nEmail: ${data.email}`);
+      setToastType("success");
+      setToastVisible(true);
+    } catch (error) {
+      setToastMessage("❌ Có lỗi xảy ra khi lưu hồ sơ!");
+      setToastType("error");
+      setToastVisible(true);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white dark:from-gray-900 dark:to-gray-800">
+      {/* ✅ Hiển thị Toast */}
+      <ToastNotification
+        message={toastMessage}
+        visible={toastVisible}
+        onClose={() => setToastVisible(false)}
+        type={toastType}
+      />
+
       <motion.section
         initial={{ opacity: 0, y: 50 }}
         animate={{ opacity: 1, y: 0 }}
@@ -43,6 +66,7 @@ const Profile = () => {
         <h1 className="text-4xl font-bold mb-6 text-green-700 dark:text-green-400">
           👤 Hồ sơ cá nhân
         </h1>
+
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}

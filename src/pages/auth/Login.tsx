@@ -9,32 +9,58 @@ import { mockLogin } from "../../services/mockAuth";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { motion } from 'framer-motion';
 import { Leaf } from 'lucide-react';
+import ToastNotification from "../../components/ui/ToastNotification";
 
 const schema = z.object({
-  email: z.string().email({ message: "Email không hợp lệ" }),
-  password: z.string().min(6, { message: "Mật khẩu ít nhất 6 ký tự" }),
+  email: z
+    .string()
+    .trim()
+    .min(1, { message: "Không được bỏ trống ô này" })
+    .email({ message: "Email không hợp lệ" }),
+
+  password: z
+    .string()
+    .trim()
+    .min(1, { message: "Không được bỏ trống ô này" })
+    .min(6, { message: "Mật khẩu ít nhất 6 ký tự" }),
 });
+
 
 type FormData = z.infer<typeof schema>;
 
 const Login = () => {
-  const form = useForm<FormData>({ resolver: zodResolver(schema) });
+  const form = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const [notif, setNotif] = React.useState({
+    visible: false,
+    message: "",
+    type: "info" as "success" | "error" | "info",
+  });
 
   const onSubmit = async (data: FormData) => {
     try {
       const user = await mockLogin(data.email, data.password);
-      alert(`Chào mừng ${user.name}!`);
-      window.location.href =
-        user.role === "admin"
-          ? "/admin/dashboard"
-          : user.role === "farmer"
-            ? "/farmer/dashboard"
-            : "/shop";
+      setNotif({ visible: true, message: `🌿 Chào mừng ${user.name}!`, type: "success" });
 
+      setTimeout(() => {
+        window.location.href =
+          user.role === "admin"
+            ? "/admin/dashboard"
+            : user.role === "farmer"
+              ? "/farmer/dashboard"
+              : "/shop";
+      }, 1200);
     } catch (error: any) {
-      alert(error.message);
+      setNotif({ visible: true, message: error.message, type: "error" });
     }
   };
+
 
   return (
     <div className="flex items-center justify-center h-screen bg-gradient-to-br from-green-100 to-green-50 dark:from-gray-900 dark:to-gray-800">
@@ -95,6 +121,13 @@ const Login = () => {
           </a>
         </p>
       </motion.div>
+      <ToastNotification
+        message={notif.message}
+        visible={notif.visible}
+        onClose={() => setNotif({ ...notif, visible: false })}
+        type={notif.type}
+      />
+
     </div>
   );
 };
