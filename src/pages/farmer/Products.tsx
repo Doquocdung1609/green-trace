@@ -73,7 +73,6 @@ const Products: React.FC = () => {
                   <TableCell>{product.name}</TableCell>
                   <TableCell>{product.price.toLocaleString('vi-VN')}</TableCell>
                   <TableCell>{product.quantity}</TableCell>
-                  <TableCell>{product.inStock ? <CheckCircle className="text-green-600" /> : <XCircle className="text-red-600" />}</TableCell>
                   <TableCell className="flex gap-2">
                     <Button asChild variant="outline" className="hover:bg-green-100">
                       <Link to={`/farmer/edit-product/${product.id}`}>Sửa</Link>

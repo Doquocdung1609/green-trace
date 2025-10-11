@@ -30,6 +30,7 @@ import Products from './pages/admin/Products';
 import Reports from './pages/admin/Reports';
 import Transactions from './pages/admin/Transactions';
 import AdminOrders from './pages/admin/Orders';
+import EditProduct from './pages/farmer/EditProduct';
 
 const queryClient = new QueryClient();
 
@@ -59,6 +60,7 @@ function App() {
                 <Route path="/farmer/trace" element={<FarmerTrace />} />
                 <Route path="/farmer/orders" element={<FarmerOrders />} />
                 <Route path="/farmer/profile" element={<FarmerProfile />} />
+                <Route path="/farmer/edit-product/:id" element={<EditProduct />} />
               </Route>
 
               {/* Admin Routes */}

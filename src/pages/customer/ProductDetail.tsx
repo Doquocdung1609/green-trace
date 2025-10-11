@@ -1,4 +1,3 @@
-// ProductDetail.tsx
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -26,6 +25,7 @@ const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showNotif, setShowNotif] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -37,10 +37,8 @@ const ProductDetail = () => {
     load();
   }, [id]);
 
-  const [showNotif, setShowNotif] = useState(false);
-
   const addToCart = () => {
-    if (!product || !product.inStock || product.quantity <= 0) return;
+    if (!product || product.quantity <= 0) return;
     const cart = JSON.parse(localStorage.getItem("cart") || "[]");
     const existing = cart.find((i: any) => i.id === product.id);
     if (existing) existing.quantity += 1;
@@ -67,8 +65,10 @@ const ProductDetail = () => {
             </motion.h1>
             <p className="text-lg text-gray-600 dark:text-gray-300"><span className="font-semibold">Xuất xứ:</span> {product.origin}</p>
             <p className="text-3xl font-bold text-green-600 dark:text-green-400">{product.price.toLocaleString()} VNĐ</p>
-            <p className="text-sm text-gray-500">Số lượng còn: {product.quantity} | {product.inStock ? 'Còn hàng' : 'Hết hàng'}</p>
-            <Button onClick={addToCart} className="rounded-full bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg font-semibold shadow-md transition-all duration-300 hover:shadow-lg" disabled={!product.inStock || product.quantity <= 0}>
+            <p className="text-sm text-gray-500">
+              Số lượng còn: {product.quantity > 0 ? 'Còn hàng' : 'Hết hàng'}
+            </p>
+            <Button onClick={addToCart} className="rounded-full bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg font-semibold shadow-md transition-all duration-300 hover:shadow-lg" disabled={product.quantity <= 0}>
               🛒 Thêm vào giỏ hàng
             </Button>
           </div>
@@ -95,7 +95,13 @@ const ProductDetail = () => {
                 <div>
                   <strong>Chứng nhận:</strong>
                   <ul className="list-disc pl-5">
-                    {product.certifications.map((cert, i) => <li key={i}>{cert}</li>)}
+                    {product.certifications && product.certifications.length > 0 ? (
+                      product.certifications.map((cert, i) => (
+                        <li key={i}>{cert.name}</li>
+                      ))
+                    ) : (
+                      <li>Không có chứng nhận</li>
+                    )}
                   </ul>
                 </div>
               </div>

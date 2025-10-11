@@ -6,14 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchOrders } from '../../services/api';
 import { motion } from 'framer-motion';
 import { ShoppingBag } from 'lucide-react';
-
-interface Order {
-  id: string | number;
-  customerName: string;
-  total: number;
-  date: string;
-  status: 'pending' | 'completed' | 'cancelled' | string;
-}
+import type { Order } from '../../types/types';
 
 const Orders: React.FC = () => {
   const { data: orders, isLoading, isError } = useQuery<Order[]>({
@@ -42,10 +35,11 @@ const Orders: React.FC = () => {
               <TableRow className="bg-green-50 dark:bg-gray-700">
                 <TableHead>Mã đơn</TableHead>
                 <TableHead>Khách hàng</TableHead>
+                <TableHead>Số điện thoại</TableHead>
+                <TableHead>Địa chỉ</TableHead>
                 <TableHead>Tổng tiền (VNĐ)</TableHead>
                 <TableHead>Ngày đặt</TableHead>
                 <TableHead>Trạng thái</TableHead>
-                <TableHead>Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -59,6 +53,8 @@ const Orders: React.FC = () => {
                 >
                   <TableCell>{order.id}</TableCell>
                   <TableCell>{order.customerName}</TableCell>
+                  <TableCell>{order.phone}</TableCell>
+                  <TableCell>{order.address}</TableCell>
                   <TableCell>{order.total?.toLocaleString('vi-VN')}</TableCell>
                   <TableCell>{new Date(order.date).toLocaleDateString('vi-VN')}</TableCell>
                   <TableCell>
@@ -81,10 +77,6 @@ const Orders: React.FC = () => {
                         ? 'Đã hủy'
                         : 'Không xác định'}
                     </span>
-                  </TableCell>
-                  <TableCell className="flex gap-2">
-                    <Button variant="outline" className="hover:bg-green-100">Xem</Button>
-                    <Button variant="destructive">Xóa</Button>
                   </TableCell>
                 </motion.tr>
               ))}

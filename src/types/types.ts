@@ -1,25 +1,41 @@
-// types.ts
-export interface Product {
-  id: string;
-  name: string;
-  price: number;
-  image: string;
-  origin: string;
-  farmerName: string;
-  productionDate: string;
-  timeline: TimelineStep[];
-  inStock: boolean;
-  quantity: number;
-  description: string;
-  certifications: string[];
-  blockchainTxId: string;
-}
-
-export interface TimelineStep {
+export interface TimelineEntry {
   title: string;
   desc: string;
   date: string;
-  location?: string;
-  responsible?: string;
+  location: string;
+  responsible: string;
   details?: string;
+}
+
+export interface Certification {
+  name: string;
+  file: string; // Base64 string for image or PDF
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  image: string; // Base64 string for the product image
+  origin: string;
+  farmerName: string;
+  productionDate: string;
+  quantity: number;
+  timeline: TimelineEntry[];
+  certifications: Certification[];
+  blockchainTxId: string;
+}
+
+export interface Order {
+  id: string;
+  customerName: string;
+  phone: string;
+  address: string;
+  lat?: number;
+  lng?: number;
+  total: number;
+  date: string;
+  status: 'pending' | 'completed' | 'cancelled';
+  items: { productId: string; quantity: number; price: number }[];
 }

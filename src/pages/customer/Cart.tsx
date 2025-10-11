@@ -3,29 +3,65 @@ import { motion } from "framer-motion";
 import { Button } from "../../components/ui/button";
 import { Link } from "react-router-dom";
 import { Trash2 } from "lucide-react";
+import { fetchProducts } from "../../services/api";
+import { toast } from "../../hooks/use-toast";
+import type { Product } from "../../types/types";
 
 const Cart = () => {
   const [cart, setCart] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
-    const storedCart = JSON.parse(localStorage.getItem("cart") || "[]");
-    setCart(storedCart);
+    const loadData = async () => {
+      const storedCart = JSON.parse(localStorage.getItem("cart") || "[]");
+      const fetchedProducts = await fetchProducts();
+      setCart(storedCart);
+      setProducts(fetchedProducts);
+    };
+    loadData();
   }, []);
 
   const updateQuantity = (id: string, delta: number) => {
+    const product = products.find((p) => p.id === id);
+    if (!product) {
+      toast({
+        title: "Lỗi",
+        description: "Sản phẩm không tồn tại.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const cartItem = cart.find((item) => item.id === id);
+    if (!cartItem) return;
+
+    const newQuantity = Math.max(1, cartItem.quantity + delta);
+    if (newQuantity > product.quantity) {
+      toast({
+        title: "Lỗi",
+        description: `Số lượng tối đa cho ${product.name} là ${product.quantity}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const updated = cart.map((item) =>
-      item.id === id
-        ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-        : item
+      item.id === id ? { ...item, quantity: newQuantity } : item
     );
     setCart(updated);
     localStorage.setItem("cart", JSON.stringify(updated));
+    window.dispatchEvent(new Event("cartUpdated"));
   };
 
   const removeItem = (id: string) => {
     const updated = cart.filter((item) => item.id !== id);
     setCart(updated);
     localStorage.setItem("cart", JSON.stringify(updated));
+    window.dispatchEvent(new Event("cartUpdated"));
+    toast({
+      title: "Đã xóa",
+      description: "Sản phẩm đã được xóa khỏi giỏ hàng.",
+    });
   };
 
   const total = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
@@ -53,7 +89,6 @@ const Cart = () => {
           </div>
         ) : (
           <>
-            {/* Bảng sản phẩm */}
             <div className="overflow-x-auto">
               <table className="w-full border-collapse bg-white dark:bg-gray-800 rounded-xl shadow">
                 <thead>
@@ -72,7 +107,6 @@ const Cart = () => {
                       key={item.id}
                       className="border-b hover:bg-green-50 dark:hover:bg-gray-700 transition"
                     >
-                      {/* Ảnh sản phẩm */}
                       <td className="p-4">
                         <img
                           src={item.image}
@@ -80,16 +114,10 @@ const Cart = () => {
                           className="w-20 h-20 object-cover rounded-lg"
                         />
                       </td>
-
-                      {/* Tên sản phẩm */}
                       <td className="p-4 font-medium">{item.name}</td>
-
-                      {/* Đơn giá */}
                       <td className="p-4 text-green-700 font-semibold">
                         {item.price.toLocaleString("vi-VN")}đ
                       </td>
-
-                      {/* Số lượng */}
                       <td className="p-4">
                         <div className="flex items-center gap-2">
                           <Button
@@ -107,13 +135,9 @@ const Cart = () => {
                           </Button>
                         </div>
                       </td>
-
-                      {/* Thành tiền */}
                       <td className="p-4 font-semibold">
                         {(item.price * item.quantity).toLocaleString("vi-VN")}đ
                       </td>
-
-                      {/* Xóa */}
                       <td className="p-4 text-center">
                         <button
                           onClick={() => removeItem(item.id)}
@@ -128,7 +152,6 @@ const Cart = () => {
               </table>
             </div>
 
-            {/* Tổng cộng */}
             <div className="mt-8 flex flex-col md:flex-row justify-end items-center gap-4">
               <p className="text-xl font-semibold">
                 Tổng tiền:{" "}
