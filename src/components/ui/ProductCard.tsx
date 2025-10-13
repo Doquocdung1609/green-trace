@@ -1,4 +1,3 @@
-// ProductCard.tsx
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader } from './card';
 import { Button } from './button';
@@ -22,7 +21,7 @@ const ProductCard = ({ product }: { product: Product }) => (
         <div className="absolute top-3 left-3 bg-green-600 text-white text-xs px-3 py-1 rounded-full shadow">
           Nông sản sạch
         </div>
-        {!product.inStock && (
+        {product.quantity <= 0 && ( // Fix: Show "Hết hàng" when quantity <= 0
           <div className="absolute top-3 right-3 bg-red-600 text-white text-xs px-3 py-1 rounded-full shadow flex items-center">
             <AlertCircle className="w-4 h-4 mr-1" /> Hết hàng
           </div>
@@ -42,7 +41,7 @@ const ProductCard = ({ product }: { product: Product }) => (
         <Link to={`/product/${product.id}`}>
           <Button 
             className="mt-2 w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-medium rounded-full"
-            disabled={!product.inStock}
+            disabled={product.quantity <= 0} // Fix: Disable button when quantity <= 0
           >
             <Leaf className="w-4 h-4 mr-2" /> Xem chi tiết
           </Button>

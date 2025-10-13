@@ -123,7 +123,7 @@ const Checkout = () => {
       try {
         mapRef.current = new trackasiagl.Map({
           container: mapContainerRef.current,
-          style: `https://maps.track-asia.com/styles/v2/streets.json?key=${TRACK_ASIA_ACCESS_TOKEN}`,
+          style: `https://maps.track-asia.com/styles/v2/?streets.jsonkey=${TRACK_ASIA_ACCESS_TOKEN}`,
           center: [105.8542, 21.0285], // Hanoi center
           zoom: 10,
         });
