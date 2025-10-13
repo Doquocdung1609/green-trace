@@ -3,8 +3,8 @@ import DashboardLayout from '../../layouts/DashboardLayout';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useWallet } from '@solana/wallet-adapter-react';
-import { addProduct, mintNFT } from '../../services/api';
+import { useConnection, useWallet } from '@solana/wallet-adapter-react';
+import { addProduct} from '../../services/api';
 import {
   Tabs,
   TabsContent,
@@ -137,6 +137,7 @@ const AddProduct = () => {
   });
   const [step, setStep] = useState('info');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [certificationPreviews, setCertificationPreviews] = useState<{ [key: number]: string | null }>({});
   const [addressSuggestions, setAddressSuggestions] = useState<{ [key: number]: any[] }>({});
   const [showSuggestions, setShowSuggestions] = useState<{ [key: number]: boolean }>({});
   const [isSearching, setIsSearching] = useState<{ [key: number]: boolean }>({});
@@ -146,8 +147,10 @@ const AddProduct = () => {
   const debounceTimers = useRef<{ [key: number]: number | null }>({});
   const observerRefs = useRef<(MutationObserver | null)[]>([]);
   const mapContainerRefs = useRef<(HTMLDivElement | null)[]>([]);
-
+  const wallet = useWallet();
+  const { connection } = useConnection();
   const queryClient = useQueryClient();
+
 
   const { mutate: add } = useMutation({
     mutationFn: async ({ newProduct, blockchainTxId }: { newProduct: Omit<Product, 'id' | 'blockchainTxId'>; blockchainTxId: string }) => {
@@ -674,36 +677,69 @@ const AddProduct = () => {
 
   const onSubmit = async (data: FormData) => {
     try {
-      const imageBase64 = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.readAsDataURL(data.image);
+      if (!wallet.publicKey) {
+        throw new Error('Vui lòng kết nối ví Solana.');
+      }
+
+      // Prepare FormData for multipart/form-data
+      const formData = new FormData();
+      formData.append('name', data.name);
+      formData.append('description', data.description);
+      formData.append('price', data.price.toString());
+      formData.append('origin', data.origin);
+      formData.append('farmerName', data.farmerName);
+      formData.append('productionDate', data.productionDate);
+      formData.append('quantity', data.quantity.toString());
+      formData.append('timeline', JSON.stringify(data.timeline));
+      formData.append('publicKey', wallet.publicKey.toBase58());
+
+      // Append image file
+      if (data.image instanceof File) {
+        formData.append('image', data.image, data.image.name);
+      } else {
+        throw new Error('Hình ảnh sản phẩm không hợp lệ.');
+      }
+
+      // Append certification files
+      (data.certifications || []).forEach((cert, index) => {
+        if (cert.file instanceof File) {
+          formData.append('certifications', cert.file, cert.file.name);
+          formData.append(`certificationNames[${index}]`, cert.name);
+        }
       });
 
-      const certifications = await Promise.all(
-        (data.certifications || []).map(async (cert) => ({
-          name: cert.name,
-          file: await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.readAsDataURL(cert.file);
-          }),
-        }))
-      );
+      // Call backend API to mint NFT
+      const response = await fetch('http://localhost:5000/mint-nft', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Minting failed');
+      }
+
+      console.log(`NFT Minted Successfully!`);
+      console.log(`Transaction: ${result.explorerUrl}`);
+      console.log(`Mint Address: https://explorer.solana.com/address/${result.mintAddress}?cluster=devnet`);
+      console.log(`Metadata URI: ${result.metadataUri}`);
 
       const newProduct: Omit<Product, 'id' | 'blockchainTxId'> = {
         ...data,
-        image: imageBase64,
-        certifications,
+        image: URL.createObjectURL(data.image), // Store as URL for display
+        certifications: (data.certifications || []).map(({ name, file }) => ({
+          name,
+          file: file instanceof File ? URL.createObjectURL(file) : '',
+        })),
         timeline: data.timeline,
         quantity: data.quantity,
       };
-      const txId = await mintNFT(data, {});
-      add({ newProduct, blockchainTxId: txId });
-    } catch (error) {
+
+      add({ newProduct, blockchainTxId: result.signature });
+    } catch (error: any) {
       toast({
-        title: 'Lỗi khi thêm sản phẩm',
-        description: 'Đã xảy ra sự cố. Vui lòng thử lại sau.',
+        title: 'Lỗi khi mint NFT hoặc thêm sản phẩm',
+        description: `Chi tiết: ${error.message || 'Vui lòng thử lại.'}`,
         variant: 'destructive',
       });
     }
@@ -1074,11 +1110,38 @@ const AddProduct = () => {
                             <FormItem>
                               <FormLabel>Tệp chứng nhận (JPEG, PNG, PDF)</FormLabel>
                               <FormControl>
-                                <Input
-                                  type="file"
-                                  accept="image/jpeg,image/png,application/pdf"
-                                  onChange={(e) => field.onChange(e.target.files ? e.target.files[0] : null)}
-                                />
+                                <div>
+                                  {certificationPreviews[index] && (
+                                    <img
+                                      src={certificationPreviews[index]!}
+                                      alt={`Certification preview ${index}`}
+                                      className="w-32 h-32 object-cover mb-2 rounded-md"
+                                    />
+                                  )}
+                                  <Input
+                                    type="file"
+                                    accept="image/jpeg,image/png,application/pdf"
+                                    onChange={(e) => {
+                                      const file = e.target.files ? e.target.files[0] : null;
+                                      field.onChange(file);
+                                      if (file && ['image/jpeg', 'image/png'].includes(file.type)) {
+                                        const reader = new FileReader();
+                                        reader.onload = () => {
+                                          setCertificationPreviews((prev) => ({
+                                            ...prev,
+                                            [index]: reader.result as string,
+                                          }));
+                                        };
+                                        reader.readAsDataURL(file);
+                                      } else {
+                                        setCertificationPreviews((prev) => ({
+                                          ...prev,
+                                          [index]: null,
+                                        }));
+                                      }
+                                    }}
+                                  />
+                                </div>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1087,7 +1150,14 @@ const AddProduct = () => {
                         <Button
                           type="button"
                           variant="destructive"
-                          onClick={() => removeCertification(index)}
+                          onClick={() => {
+                            removeCertification(index);
+                            setCertificationPreviews((prev) => {
+                              const newPreviews = { ...prev };
+                              delete newPreviews[index];
+                              return newPreviews;
+                            });
+                          }}
                           className="mt-2"
                         >
                           <Trash2 className="w-4 h-4 mr-2" />

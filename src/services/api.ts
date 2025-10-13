@@ -353,7 +353,3 @@ export const addOrder = async (order: Order): Promise<void> => {
   });
   localStorage.setItem('products', JSON.stringify(updatedProducts));
 };
-
-export const mintNFT = async (data: any, wallet: any): Promise<string> => {
-  return `mock-tx-${Math.random().toString(36).substring(2, 15)}`;
-};
