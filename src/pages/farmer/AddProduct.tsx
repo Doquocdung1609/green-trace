@@ -733,6 +733,10 @@ const AddProduct = () => {
         })),
         timeline: data.timeline,
         quantity: data.quantity,
+        growthRate: 0,
+        age: 0,
+        iotStatus: 'Đang theo dõi',
+        roi: 0
       };
 
       add({ newProduct, blockchainTxId: result.signature });

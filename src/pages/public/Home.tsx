@@ -1,15 +1,16 @@
-// Home.tsx (updated to use shared Product interface)
 import { motion } from 'framer-motion';
 import { Parallax } from 'react-parallax';
+import { Link } from 'react-router-dom';
 import Lottie from 'lottie-react';
 import leafAnim from '../../assets/leaves.json';
 import Header from '../../components/ui/Header';
 import Footer from '../../components/ui/Footer';
 import ProductCard from '../../components/ui/ProductCard';
-import { fetchProducts } from '../../services/api';
+import CarbonCard from '../../components/ui/CarbonCard';
+import { fetchProducts, fetchCarbonCredits } from '../../services/api';
 import { useQuery } from '@tanstack/react-query';
-import { Leaf, ShoppingBag, ShieldCheck } from 'lucide-react';
-import type { Product } from '../../types/types';
+import { Cpu, Coins, Satellite, Cloud, Leaf } from 'lucide-react';
+import type { Product, CarbonCredit } from '../../types/types';
 
 const Home = () => {
   const { data: products, isLoading, isError } = useQuery({
@@ -17,13 +18,18 @@ const Home = () => {
     queryFn: fetchProducts,
   });
 
+  const { data: carbonCredits, isLoading: loadingCarbon, isError: errorCarbon } = useQuery({
+    queryKey: ['carbonCredits'],
+    queryFn: fetchCarbonCredits,
+  });
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-green-50 to-white dark:from-gray-900 dark:to-gray-800 transition-all">
       <Header />
 
-      {/* 🌤 Parallax Hero Section */}
+      {/* 🚀 Hero Section */}
       <Parallax
-        bgImage="https://images.unsplash.com/photo-1616627989736-25a64b1b3d70?auto=format&fit=crop&w=1400&q=80"
+        bgImage="https://images.unsplash.com/photo-1616627989736-25a64b1b3d70?auto=format&fit=crop&w=1600&q=80"
         strength={400}
       >
         <motion.section
@@ -32,7 +38,7 @@ const Home = () => {
           transition={{ duration: 0.7 }}
           className="relative text-white py-32 px-6 text-center bg-green-600/70 backdrop-blur-md"
         >
-          <div className="absolute inset-0 opacity-10 pointer-events-none">
+          <div className="absolute inset-0 opacity-15 pointer-events-none">
             <Lottie animationData={leafAnim} loop />
           </div>
 
@@ -42,39 +48,39 @@ const Home = () => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
           >
-            GreenTrace 🌿
+            GreenTrace 2.0 🌱
           </motion.h1>
           <p className="text-lg md:text-xl font-medium mb-8">
-            Minh bạch chuỗi cung ứng nông sản bằng công nghệ Solana Blockchain
+            Tokenized Sustainable Assets – Đầu tư sinh học, minh bạch tăng trưởng bằng IoT & Blockchain Solana
           </p>
           <motion.a
             href="/market"
             whileHover={{ scale: 1.05 }}
             className="inline-block bg-white text-green-700 font-semibold px-8 py-3 rounded-full shadow-lg hover:bg-green-100 transition"
           >
-            Khám phá thị trường
+            Khám phá tài sản sinh học
           </motion.a>
         </motion.section>
       </Parallax>
 
-      {/* 🌾 Features */}
-      <section className="py-16 px-6 bg-white dark:bg-gray-900">
+      {/* ⚙️ Features */}
+      <section className="py-20 px-6 bg-white dark:bg-gray-900">
         <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-10 text-center">
           {[
             {
               icon: <Leaf className="w-12 h-12 mx-auto text-green-600 mb-4" />,
-              title: 'Nông sản hữu cơ',
-              desc: 'Sản phẩm được trồng theo quy trình VietGAP chuẩn mực.',
+              title: 'IoT Growth Tracking',
+              desc: 'Theo dõi sinh trưởng tài sản sinh học theo thời gian thực qua cảm biến IoT.',
             },
             {
-              icon: <ShieldCheck className="w-12 h-12 mx-auto text-green-600 mb-4" />,
-              title: 'Truy xuất nguồn gốc',
-              desc: 'Đảm bảo minh bạch bằng QR blockchain trên từng sản phẩm.',
+              icon: <Coins className="w-12 h-12 mx-auto text-green-600 mb-4" />,
+              title: 'NFT Ownership',
+              desc: 'Tài sản được mã hóa thành NFT – đảm bảo quyền sở hữu minh bạch và giao dịch được trên Solana.',
             },
             {
-              icon: <ShoppingBag className="w-12 h-12 mx-auto text-green-600 mb-4" />,
-              title: 'Mua sắm an toàn',
-              desc: 'Kết nối trực tiếp giữa người nông dân và người tiêu dùng.',
+              icon: <Cpu className="w-12 h-12 mx-auto text-green-600 mb-4" />,
+              title: 'Smart Yield & DeFi Integration',
+              desc: 'Đầu tư sinh lời từ tăng trưởng sinh học, carbon yield và staking sinh thái.',
             },
           ].map((item, idx) => (
             <motion.div
@@ -90,15 +96,15 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 🛒 Product Grid */}
+      {/* 💠 BioAsset Grid */}
       <section className="p-6 max-w-7xl mx-auto flex-grow">
         <h2 className="text-3xl font-bold mb-8 text-center text-green-700 dark:text-green-400">
-          🌾 Sản phẩm nổi bật
+          🌿 BioAssets tiềm năng
         </h2>
         {isLoading ? (
-          <p className="text-center">Đang tải sản phẩm...</p>
+          <p className="text-center">Đang tải danh sách tài sản...</p>
         ) : isError ? (
-          <p className="text-center text-red-500">Lỗi khi tải sản phẩm</p>
+          <p className="text-center text-red-500">Lỗi khi tải BioAsset</p>
         ) : (
           <motion.div
             className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-10"
@@ -106,9 +112,36 @@ const Home = () => {
             animate={{ opacity: 1 }}
             transition={{ staggerChildren: 0.15 }}
           >
-            {products?.map((product: Product) => (
+            {products?.slice(0, 4).map((product: Product) => (
               <motion.div key={product.id}>
                 <ProductCard product={product} />
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </section>
+
+      {/* 🌍 Carbon Credit Section */}
+      <section className="p-6 max-w-7xl mx-auto flex-grow bg-green-50 dark:bg-gray-800 rounded-2xl my-10">
+        <h2 className="text-3xl font-bold mb-8 text-center text-green-700 dark:text-green-400 flex items-center justify-center gap-2">
+          <Cloud className="w-8 h-8 text-green-600" /> Dự án Carbon Yield
+        </h2>
+        {loadingCarbon ? (
+          <p className="text-center">Đang tải dự án carbon...</p>
+        ) : errorCarbon ? (
+          <p className="text-center text-red-500">Lỗi khi tải tín chỉ carbon</p>
+        ) : (
+          <motion.div
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-10"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ staggerChildren: 0.15 }}
+          >
+            {carbonCredits?.slice(0, 4).map((credit: CarbonCredit) => (
+              <motion.div key={credit.id}>
+                <Link to={`/carbon-credit/${credit.id}`}>
+                  <CarbonCard credit={credit} />
+                </Link>
               </motion.div>
             ))}
           </motion.div>
@@ -122,13 +155,13 @@ const Home = () => {
         whileInView={{ opacity: 1 }}
         transition={{ duration: 0.6 }}
       >
-        <h3 className="text-2xl font-semibold mb-4">Gia nhập hành trình nông nghiệp bền vững 🌱</h3>
+        <h3 className="text-2xl font-semibold mb-4">Bắt đầu hành trình đầu tư sinh học 🌳</h3>
         <p className="mb-6 text-gray-700 dark:text-gray-300">
-          Cùng GreenTrace tạo nên chuỗi cung ứng minh bạch và đáng tin cậy.
+          Trở thành nhà đầu tư đầu tiên của tài sản tự nhiên minh bạch, sinh lời bền vững.
         </p>
         <a
           href="/register"
-          className="bg-green-600 text-white px-8 py-3 rounded-full font-medium shadow hover:bg-green-700 transition-all"
+          className="bg-green-700 text-white px-8 py-3 rounded-full font-medium shadow hover:bg-green-800 transition-all"
         >
           Đăng ký ngay
         </a>
