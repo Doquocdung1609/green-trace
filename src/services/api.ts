@@ -71,7 +71,15 @@ const initialProducts: Product[] = [
     ],
     blockchainTxId: 'tx-1234567890',
     roi: 0,
-    priceHistory: mockPriceHistory(5000000)
+    priceHistory: mockPriceHistory(5000000),
+    iotData: {
+  height: 120, // cm
+  growthPerMonth: 5.2, // cm/tháng
+  humidity: 65,
+  temperature: 18,
+  pH: 6.5,
+  lastUpdated: '2025-10-15T10:00:00Z'
+},
   },
   {
     id: 'bio2',
@@ -121,7 +129,15 @@ const initialProducts: Product[] = [
     ],
     blockchainTxId: 'tx-0987654321',
     roi: 0,
-    priceHistory: mockPriceHistory(2000000)
+    priceHistory: mockPriceHistory(2000000),
+    iotData: {
+  height: 120, // cm
+  growthPerMonth: 5.2, // cm/tháng
+  humidity: 65,
+  temperature: 18,
+  pH: 6.5,
+  lastUpdated: '2025-10-15T10:00:00Z'
+},
   },
   {
     id: 'bio3',
@@ -172,7 +188,15 @@ const initialProducts: Product[] = [
     ],
     blockchainTxId: 'tx-1122334455',
     roi: 0,
-    priceHistory: mockPriceHistory(10000000)
+    priceHistory: mockPriceHistory(10000000),
+    iotData: {
+  height: 120, // cm
+  growthPerMonth: 5.2, // cm/tháng
+  humidity: 65,
+  temperature: 18,
+  pH: 6.5,
+  lastUpdated: '2025-10-15T10:00:00Z'
+},
   },
   {
     id: 'bio4',
@@ -222,7 +246,15 @@ const initialProducts: Product[] = [
     ],
     blockchainTxId: 'tx-6677889900',
     roi: 0,
-    priceHistory: mockPriceHistory(3000000)
+    priceHistory: mockPriceHistory(3000000),
+    iotData: {
+  height: 120, // cm
+  growthPerMonth: 5.2, // cm/tháng
+  humidity: 65,
+  temperature: 18,
+  pH: 6.5,
+  lastUpdated: '2025-10-15T10:00:00Z'
+},
   },
   {
     id: 'bio5',
@@ -272,7 +304,15 @@ const initialProducts: Product[] = [
     ],
     blockchainTxId: 'tx-5544332211',
     roi: 0,
-    priceHistory: mockPriceHistory(15000000)
+    priceHistory: mockPriceHistory(15000000),
+    iotData: {
+  height: 120, // cm
+  growthPerMonth: 5.2, // cm/tháng
+  humidity: 65,
+  temperature: 18,
+  pH: 6.5,
+  lastUpdated: '2025-10-15T10:00:00Z'
+},
   },
   {
     id: 'bio6',
@@ -322,7 +362,15 @@ const initialProducts: Product[] = [
     ],
     blockchainTxId: 'tx-3322110099',
     roi: 0,
-    priceHistory: mockPriceHistory(2500000)
+    priceHistory: mockPriceHistory(2500000),
+    iotData: {
+  height: 120, // cm
+  growthPerMonth: 5.2, // cm/tháng
+  humidity: 65,
+  temperature: 18,
+  pH: 6.5,
+  lastUpdated: '2025-10-15T10:00:00Z'
+},
   },
   {
     id: 'bio7',
@@ -372,7 +420,15 @@ const initialProducts: Product[] = [
     ],
     blockchainTxId: 'tx-7766554433',
     roi: 0,
-    priceHistory: mockPriceHistory(8000000)
+    priceHistory: mockPriceHistory(8000000),
+    iotData: {
+  height: 120, // cm
+  growthPerMonth: 5.2, // cm/tháng
+  humidity: 65,
+  temperature: 18,
+  pH: 6.5,
+  lastUpdated: '2025-10-15T10:00:00Z'
+},
   },
   {
     id: 'bio8',
@@ -423,7 +479,15 @@ const initialProducts: Product[] = [
     ],
     blockchainTxId: 'tx-8877665544',
     roi: 0,
-    priceHistory: mockPriceHistory(1500000)
+    priceHistory: mockPriceHistory(1500000),
+    iotData: {
+  height: 120, // cm
+  growthPerMonth: 5.2, // cm/tháng
+  humidity: 65,
+  temperature: 18,
+  pH: 6.5,
+  lastUpdated: '2025-10-15T10:00:00Z'
+},
   },
   {
     id: 'bio9',
@@ -473,7 +537,15 @@ const initialProducts: Product[] = [
     ],
     blockchainTxId: 'tx-2233445566',
     roi: 0,
-    priceHistory: mockPriceHistory(12000000)
+    priceHistory: mockPriceHistory(12000000),
+    iotData: {
+  height: 120, // cm
+  growthPerMonth: 5.2, // cm/tháng
+  humidity: 65,
+  temperature: 18,
+  pH: 6.5,
+  lastUpdated: '2025-10-15T10:00:00Z'
+},
   },
 ];
 

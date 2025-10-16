@@ -92,7 +92,7 @@ const Shop = () => {
       <div className="mb-12">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-green-700 dark:text-green-400 flex items-center gap-2">
-            <Package className="w-6 h-6" /> Sản phẩm nông nghiệp
+            <Package className="w-6 h-6" /> Sản phẩm cao cấp
           </h2>
           {isUsingFilter && (
             <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -233,7 +233,7 @@ const Shop = () => {
           transition={{ duration: 0.6 }}
           className="relative text-5xl font-bold drop-shadow-lg"
         >
-          Cửa hàng nông sản & tín chỉ carbon
+          Đầu tư nông sản cao cấp & tín chỉ carbon
         </motion.h1>
         <p className="relative text-lg mt-3 opacity-90">
           Khám phá các sản phẩm tươi sạch và tín chỉ carbon từ nông trại Việt 🌾
@@ -275,7 +275,7 @@ const Shop = () => {
                 className="w-full border rounded-lg p-2 mb-2 dark:bg-gray-700 dark:text-white"
               >
                 <option value="All">Tất cả</option>
-                <option value="Products">Sản phẩm nông nghiệp</option>
+                <option value="Products">Sản phẩm cao cấp</option>
                 <option value="Carbon Credits">Tín chỉ carbon</option>
               </select>
             </div>
@@ -313,7 +313,7 @@ const Shop = () => {
               {/* Products nổi bật */}
               <div className="border-b border-gray-200 dark:border-gray-700 pb-5 space-y-3">
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium uppercase tracking-wide">
-                  Sản phẩm nông nghiệp
+                  Sản phẩm cao cấp
                 </p>
                 {featuredProducts.map((fp) => (
                   <Link

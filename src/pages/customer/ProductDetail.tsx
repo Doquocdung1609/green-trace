@@ -94,10 +94,22 @@ const ProductDetail = () => {
                 <Activity className="w-5 h-5 text-green-500" />
                 <span>Tăng trưởng: {product.growthRate}%</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Cpu className="w-5 h-5 text-sky-500" />
-                <span>{product.iotStatus}</span>
-              </div>
+              <div className="flex items-center gap-2 col-span-2">
+    <Cpu className="w-5 h-5 text-sky-500" />
+    <span>Trạng thái IoT: {product.iotStatus}</span>
+  </div>
+  {/* Thêm chi tiết IoT */}
+  <div className="col-span-2 bg-green-100 dark:bg-gray-800 p-4 rounded-lg space-y-2">
+    <h4 className="font-semibold text-green-700 dark:text-green-300">Dữ liệu IoT chi tiết (cập nhật gần nhất: {new Date(product.iotData.lastUpdated).toLocaleString('vi-VN')})</h4>
+    <ul className="list-disc pl-5 text-sm">
+      <li>Chiều cao hiện tại: {product.iotData.height} cm</li>
+      <li>Tăng trưởng trung bình/tháng: {product.iotData.growthPerMonth} cm</li>
+      <li>Độ ẩm đất: {product.iotData.humidity}%</li>
+      <li>Nhiệt độ môi trường: {product.iotData.temperature}°C</li>
+      <li>Độ pH: {product.iotData.pH}</li>
+    </ul>
+  </div>
+
               <div className="flex items-center gap-2">
                 <Coins className="w-5 h-5 text-yellow-500" />
                 <span>ROI: {product.roi}%</span>

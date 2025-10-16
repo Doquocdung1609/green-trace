@@ -29,6 +29,14 @@ export interface Product {
   growthRate: number;     // % tăng trưởng giá trị / năm
   age: number;            // Tuổi của cây hoặc vật nuôi (năm)
   iotStatus: 'Đang theo dõi' | 'Ngưng theo dõi' | 'Lỗi cảm biến'; // trạng thái IoT
+  iotData: {
+    height: number; // cm
+    growthPerMonth: number; // cm/tháng
+    humidity: number; // %
+    temperature: number; // °C
+    pH: number;
+    lastUpdated: string; // ISO date
+  };
   priceHistory?: { date: string; price: number }[];
 }
 
