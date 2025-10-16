@@ -4,12 +4,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import Header from "../../components/ui/Header";
 import Footer from "../../components/ui/Footer";
 import ProductCard from "../../components/ui/ProductCard";
-import CarbonCard from "../../components/ui/CarbonCard";
-import { fetchProducts, fetchCarbonCredits } from "../../services/api";
+import { fetchProducts } from "../../services/api";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "../../components/ui/input";
 import { Filter, MapPin, Tag } from "lucide-react";
-import type { Product, CarbonCredit } from "../../types/types";
+import type { Product} from "../../types/types";
 
 const Market = () => {
   const { data: products, isLoading: loadingProducts } = useQuery({
@@ -17,12 +16,8 @@ const Market = () => {
     queryFn: fetchProducts,
   });
 
-  const { data: carbonCredits, isLoading: loadingCarbon } = useQuery({
-    queryKey: ["carbonCredits"],
-    queryFn: fetchCarbonCredits,
-  });
 
-  const [tab, setTab] = useState<"bio" | "carbon">("bio");
+  const [tab, setTab] = useState<"bio">("bio");
   const [filter, setFilter] = useState({ type: "", price: "", location: "" });
 
   const filteredProducts = products?.filter((p: Product) => {
@@ -48,7 +43,7 @@ const Market = () => {
           🌾 GreenTrace Marketplace
         </motion.h1>
         <p className="relative text-lg mt-3 opacity-90">
-          Khám phá tài sản sinh học & tín chỉ carbon minh bạch trên Blockchain Solana
+          Khám phá tài sản sinh học minh bạch trên Blockchain Solana
         </p>
       </section>
 
@@ -74,12 +69,7 @@ const Market = () => {
               >
                 🌿 BioAssets
               </button>
-              <button
-                className={`w-1/2 py-2 rounded-full font-medium ${tab === "carbon" ? "bg-blue-500 text-white" : "text-gray-600 dark:text-gray-300"}`}
-                onClick={() => setTab("carbon")}
-              >
-                🌍 Carbon
-              </button>
+
             </div>
 
             <div>
@@ -102,13 +92,12 @@ const Market = () => {
           </div>
         </motion.aside>
 
-        {/* Products / Carbon */}
         <motion.main initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.7 }} className="w-3/4">
           <h1 className="text-3xl font-bold mb-6 text-green-700 dark:text-green-400">
-            {tab === "bio" ? "🌿 Sản phẩm sinh học" : "🌍 Dự án tín chỉ Carbon"}
+            {tab === "bio" && "🌿 Sản phẩm sinh học"}
           </h1>
 
-          {tab === "bio" ? (
+          {tab === "bio" && (
             loadingProducts ? (
               <p className="text-center">Đang tải sản phẩm...</p>
             ) : (
@@ -118,14 +107,6 @@ const Market = () => {
                 ))}
               </div>
             )
-          ) : loadingCarbon ? (
-            <p className="text-center">Đang tải tín chỉ carbon...</p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {carbonCredits?.map((credit: CarbonCredit) => (
-                <CarbonCard key={credit.id} credit={credit} />
-              ))}
-            </div>
           )}
         </motion.main>
       </section>

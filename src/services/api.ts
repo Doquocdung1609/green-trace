@@ -1,8 +1,7 @@
 import { Connection, Keypair, Transaction, SystemProgram } from '@solana/web3.js';
-import type { CarbonCredit, Order, Product } from '../types/types';
+import type { Order, Product } from '../types/types';
 
 const PRODUCTS_KEY = 'products';
-const CARBON_CREDITS_KEY = 'carbonCredits';
 
 // Giả lập dữ liệu giá lịch sử
 const mockPriceHistory = (basePrice: number) => {
@@ -549,103 +548,7 @@ const initialProducts: Product[] = [
   },
 ];
 
-const initialCarbonCredits: CarbonCredit[] = [
-  {
-    id: 'C1',
-    name: 'Dự án Trồng Rừng Tây Nguyên 2025',
-    description:
-      'Dự án trồng rừng phục hồi hệ sinh thái tại Tây Nguyên, giúp hấp thụ 1.200 tấn CO₂/năm. Mục tiêu tái tạo 150 ha rừng bằng cây bản địa và tăng độ che phủ rừng địa phương.',
-    image: 'https://sohanews.sohacdn.com/160588918557773824/2025/10/11/anh-chup-man-hinh-2025-10-11-luc-070525-1760142805176-1760142805933763493656.png',
-    projectType: 'Reforestation',
-    origin: 'Đắk Lắk, Việt Nam',
-    organization: 'GreenFuture Foundation',
-    issueDate: '06/2025',
-    co2OffsetTons: 1200,
-    pricePerTon: 25,
-    certifications: [
-      { name: 'Verra VCS', file: 'data:application/pdf;base64,JVBERi0xLjAK...' },
-      { name: 'Forest Stewardship Council (FSC)', file: 'data:application/pdf;base64,JVBERi0xLjAK...' },
-    ],
-    timeline: [
-      { title: 'Khởi động dự án', desc: 'Xác định khu vực trồng rừng và khảo sát đất.', date: '01/01/2025', location: 'Đắk Lắk', responsible: 'GreenFuture Team' },
-      { title: 'Trồng cây bản địa', desc: 'Trồng 50.000 cây keo, sao đen, lim xanh.', date: '03/02/2025', location: 'Đắk Lắk', responsible: 'Tình nguyện viên địa phương' },
-      { title: 'Giám sát IoT', desc: 'Lắp đặt cảm biến đo độ ẩm, sinh trưởng cây.', date: '05/03/2025', location: 'Đắk Lắk', responsible: 'GreenTrace IoT Unit' },
-      { title: 'Chứng nhận Verra', desc: 'Đạt tiêu chuẩn quốc tế về tín chỉ carbon.', date: '06/2025', location: 'Hà Nội', responsible: 'Tổ chức Verra' },
-    ],
-    blockchainTxId: 'tx-carbon-0001',
-  },
-  {
-    id: 'C2',
-    name: 'Dự án Điện Gió Bình Thuận 2025',
-    description:
-      'Dự án năng lượng tái tạo với 25 tua-bin gió, giảm phát thải 15.000 tấn CO₂/năm bằng cách thay thế nguồn điện từ than đá. Được triển khai theo tiêu chuẩn Gold Standard.',
-    image: 'https://bbt.1cdn.vn/2023/05/19/dien-gio-bac-binh-anh-n.-lan-1-.jpg',
-    projectType: 'Renewable Energy',
-    origin: 'Bình Thuận, Việt Nam',
-    organization: 'EcoWind JSC',
-    issueDate: '07/2025',
-    co2OffsetTons: 15000,
-    pricePerTon: 28,
-    certifications: [
-      { name: 'Gold Standard', file: 'data:application/pdf;base64,JVBERi0xLjAK...' },
-    ],
-    timeline: [
-      { title: 'Khảo sát gió', desc: 'Đo tốc độ gió và vị trí tối ưu lắp đặt.', date: '01/02/2025', location: 'Bình Thuận', responsible: 'EcoWind Engineering Team' },
-      { title: 'Xây dựng cơ sở hạ tầng', desc: 'Lắp đặt nền móng và tua-bin.', date: '03/2025', location: 'Bình Thuận', responsible: 'Công ty Xây dựng A' },
-      { title: 'Vận hành thử nghiệm', desc: 'Tua-bin đầu tiên phát điện lên lưới.', date: '06/2025', location: 'Bình Thuận', responsible: 'EcoWind Ops' },
-      { title: 'Chứng nhận Carbon', desc: 'Được chứng nhận giảm phát thải CO₂.', date: '07/2025', location: 'TP. HCM', responsible: 'Gold Standard International' },
-    ],
-    blockchainTxId: 'tx-carbon-0002',
-  },
-  {
-    id: 'C3',
-    name: 'Phục hồi Rừng Ngập Mặn Cà Mau 2025',
-    description:
-      'Dự án trồng và bảo tồn 200 ha rừng ngập mặn tại Cà Mau, giúp hấp thụ 3.500 tấn CO₂/năm, bảo vệ bờ biển và hệ sinh thái thủy sinh.',
-    image: 'https://cdn.nhandan.vn/images/1ef398c4e2fb4bf07980a2ded785b3ef1238c16d30e79725237b775edbad513c1227a91db87bccf782238d0821757c29be83a49ab9b3aabbf16c875604a75ed29de900cef7506d633b92a2af68de8369c7a464b05c1d975f7febe2246310df1c/scl-14-4-rung-ngap-man-5715-550-7577-4157.jpg',
-    projectType: 'Mangrove Restoration',
-    origin: 'Cà Mau, Việt Nam',
-    organization: 'BlueCarbon Alliance',
-    issueDate: '05/2025',
-    co2OffsetTons: 3500,
-    pricePerTon: 30,
-    certifications: [
-      { name: 'Verra VCS', file: 'data:application/pdf;base64,JVBERi0xLjAK...' },
-      { name: 'Mangrove Restoration Standard (MRS)', file: 'data:application/pdf;base64,JVBERi0xLjAK...' },
-    ],
-    timeline: [
-      { title: 'Chuẩn bị đất', desc: 'Phục hồi khu vực bị xói mòn.', date: '01/03/2025', location: 'Cà Mau', responsible: 'BlueCarbon Team' },
-      { title: 'Trồng rừng ngập mặn', desc: 'Trồng 80.000 cây đước và mắm.', date: '04/2025', location: 'Cà Mau', responsible: 'Ngư dân địa phương' },
-      { title: 'Giám sát sinh trưởng', desc: 'Theo dõi mật độ cây và sinh trưởng.', date: '05/2025', location: 'Cà Mau', responsible: 'GreenTrace IoT Unit' },
-      { title: 'Chứng nhận quốc tế', desc: 'Đạt chứng nhận Verra VCS.', date: '05/2025', location: 'Hà Nội', responsible: 'Verra Organization' },
-    ],
-    blockchainTxId: 'tx-carbon-0003',
-  },
-  {
-    id: 'C4',
-    name: 'Nông Nghiệp Hữu Cơ Bắc Giang 2025',
-    description:
-      'Dự án nông nghiệp hữu cơ quy mô 300 ha tại Bắc Giang, giúp giảm phát thải 2.000 tấn CO₂/năm thông qua việc loại bỏ phân bón hóa học và áp dụng canh tác tuần hoàn.',
-    image: 'https://bacgiang.gov.vn/documents/20181/17596660/1692239515117_1.jpg/127cd528-355a-44e4-bfa0-b11312ce3e98?t=1692239515121',
-    projectType: 'Organic Farming',
-    origin: 'Bắc Giang, Việt Nam',
-    organization: 'AgroGreen Cooperative',
-    issueDate: '04/2025',
-    co2OffsetTons: 2000,
-    pricePerTon: 22,
-    certifications: [
-      { name: 'Organic Vietnam', file: 'data:application/pdf;base64,JVBERi0xLjAK...' },
-      { name: 'Carbon Neutral Certification', file: 'data:application/pdf;base64,JVBERi0xLjAK...' },
-    ],
-    timeline: [
-      { title: 'Chuyển đổi đất nông nghiệp', desc: 'Loại bỏ phân hóa học và trồng cây che phủ đất.', date: '01/01/2025', location: 'Bắc Giang', responsible: 'AgroGreen Team' },
-      { title: 'Triển khai IoT Monitoring', desc: 'Giám sát phát thải N₂O bằng cảm biến thông minh.', date: '02/2025', location: 'Bắc Giang', responsible: 'GreenTrace Sensor Network' },
-      { title: 'Đánh giá Carbon Footprint', desc: 'Xác minh giảm phát thải thực tế.', date: '03/2025', location: 'Bắc Giang', responsible: 'Carbon Verification Lab' },
-      { title: 'Phát hành Tín chỉ Carbon', desc: 'Mint token carbon trên Solana.', date: '04/2025', location: 'Blockchain Solana', responsible: 'GreenTrace DAO' },
-    ],
-    blockchainTxId: 'tx-carbon-0004',
-  },
-];
+
 
 function getProducts(): Product[] {
   const stored = localStorage.getItem(PRODUCTS_KEY);
@@ -657,23 +560,10 @@ function getProducts(): Product[] {
   }
 }
 
-function getCarbonCredits(): CarbonCredit[] {
-  const stored = localStorage.getItem(CARBON_CREDITS_KEY);
-  if (stored) {
-    return JSON.parse(stored);
-  } else {
-    localStorage.setItem(CARBON_CREDITS_KEY, JSON.stringify(initialCarbonCredits));
-    return initialCarbonCredits;
-  }
-}
 
 // Lấy danh sách sản phẩm
 export const fetchProducts = async (): Promise<Product[]> => {
   return getProducts();
-};
-
-export const fetchCarbonCredits = async (): Promise<CarbonCredit[]> => {
-  return Promise.resolve(getCarbonCredits());
 };
 
 // Thêm sản phẩm mới

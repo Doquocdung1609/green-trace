@@ -54,18 +54,4 @@ export interface Order {
   items: { productId: string; quantity: number; price: number }[];
 }
 
-export interface CarbonCredit {
-  id: string;
-  name: string;
-  description: string;
-  image: string;
-  projectType: 'Reforestation' | 'Renewable Energy' | 'Mangrove Restoration' | 'Organic Farming';
-  origin: string;
-  organization: string;
-  issueDate: string;
-  co2OffsetTons: number; // Lượng CO₂ hấp thụ hoặc giảm thải
-  pricePerTon: number; // Giá cho mỗi tấn CO₂
-  certifications: Certification[];
-  timeline: TimelineEntry[];
-  blockchainTxId: string;
-}
+

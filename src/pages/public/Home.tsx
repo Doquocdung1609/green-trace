@@ -6,11 +6,10 @@ import leafAnim from '../../assets/leaves.json';
 import Header from '../../components/ui/Header';
 import Footer from '../../components/ui/Footer';
 import ProductCard from '../../components/ui/ProductCard';
-import CarbonCard from '../../components/ui/CarbonCard';
-import { fetchProducts, fetchCarbonCredits } from '../../services/api';
+import { fetchProducts} from '../../services/api';
 import { useQuery } from '@tanstack/react-query';
 import { Cpu, Coins, Satellite, Cloud, Leaf } from 'lucide-react';
-import type { Product, CarbonCredit } from '../../types/types';
+import type { Product} from '../../types/types';
 
 const Home = () => {
   const { data: products, isLoading, isError } = useQuery({
@@ -18,10 +17,6 @@ const Home = () => {
     queryFn: fetchProducts,
   });
 
-  const { data: carbonCredits, isLoading: loadingCarbon, isError: errorCarbon } = useQuery({
-    queryKey: ['carbonCredits'],
-    queryFn: fetchCarbonCredits,
-  });
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-green-50 to-white dark:from-gray-900 dark:to-gray-800 transition-all">
@@ -80,7 +75,7 @@ const Home = () => {
             {
               icon: <Cpu className="w-12 h-12 mx-auto text-green-600 mb-4" />,
               title: 'Smart Yield & DeFi Integration',
-              desc: 'Đầu tư sinh lời từ tăng trưởng sinh học, carbon yield và staking sinh thái.',
+              desc: 'Đầu tư sinh lời từ tăng trưởng sinh học, và staking sinh thái.',
             },
           ].map((item, idx) => (
             <motion.div
@@ -121,32 +116,7 @@ const Home = () => {
         )}
       </section>
 
-      {/* 🌍 Carbon Credit Section */}
-      <section className="p-6 max-w-7xl mx-auto flex-grow bg-green-50 dark:bg-gray-800 rounded-2xl my-10">
-        <h2 className="text-3xl font-bold mb-8 text-center text-green-700 dark:text-green-400 flex items-center justify-center gap-2">
-          <Cloud className="w-8 h-8 text-green-600" /> Dự án Carbon Yield
-        </h2>
-        {loadingCarbon ? (
-          <p className="text-center">Đang tải dự án carbon...</p>
-        ) : errorCarbon ? (
-          <p className="text-center text-red-500">Lỗi khi tải tín chỉ carbon</p>
-        ) : (
-          <motion.div
-            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-10"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ staggerChildren: 0.15 }}
-          >
-            {carbonCredits?.slice(0, 4).map((credit: CarbonCredit) => (
-              <motion.div key={credit.id}>
-                <Link to={`/carbon-credit/${credit.id}`}>
-                  <CarbonCard credit={credit} />
-                </Link>
-              </motion.div>
-            ))}
-          </motion.div>
-        )}
-      </section>
+      
 
       {/* CTA Section */}
       <motion.section

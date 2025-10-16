@@ -1,14 +1,13 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { fetchProducts, fetchCarbonCredits } from "../../services/api";
+import { fetchProducts } from "../../services/api";
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
 import { Link } from "react-router-dom";
 import { Filter, Tag, Star, Package, Cloud } from "lucide-react";
 import ProductCard from "../../components/ui/ProductCard";
-import CarbonCard from "../../components/ui/CarbonCard";
-import type { Product, CarbonCredit } from "../../types/types";
+import type { Product } from "../../types/types";
 
 const Shop = () => {
   const { data: products = [], isLoading: isLoadingProducts, isError: isErrorProducts } = useQuery({
@@ -16,19 +15,14 @@ const Shop = () => {
     queryFn: fetchProducts,
   });
 
-  const { data: carbonCredits = [], isLoading: isLoadingCarbonCredits, isError: isErrorCarbonCredits } = useQuery({
-    queryKey: ["carbonCredits"],
-    queryFn: fetchCarbonCredits,
-  });
-
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
-  const [contentType, setContentType] = useState<"All" | "Products" | "Carbon Credits">("All");
+  const [contentType, setContentType] = useState<"Products">("Products");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
 
   // Kiểm tra xem có đang sử dụng bộ lọc không
-  const isUsingFilter = search !== "" || category !== "" || contentType !== "All";
+  const isUsingFilter = search !== "" || category !== "";
 
   // Lọc và tìm kiếm cho Products
   const filteredProducts = useMemo(() => {
@@ -36,54 +30,45 @@ const Shop = () => {
       const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
       const matchesCategory =
         category === "" ||
-        (category === "Trái cây" &&
-          ["xoài", "sầu riêng", "thanh long", "chôm chôm"].some((k) =>
+        (category === "Sâm" &&
+          ["sâm ngọc linh", "nhân sâm"].some((k) =>
             p.name.toLowerCase().includes(k)
           )) ||
-        (category === "Rau củ" &&
-          ["rau", "bắp cải", "cà rốt"].some((k) =>
+        (category === "Nấm" &&
+          ["nấm linh chi", "đông trùng hạ thảo"].some((k) =>
             p.name.toLowerCase().includes(k)
           )) ||
-        (category === "Cà phê" && p.name.toLowerCase().includes("cà phê"));
+        (category === "Cây cảnh" &&
+          ["bonsai tùng", "mai vàng", "lan phi điệp"].some((k) =>
+            p.name.toLowerCase().includes(k)
+          )) ||
+        (category === "Trầm hương" &&
+          ["trầm hương", "kỳ nam"].some((k) =>
+            p.name.toLowerCase().includes(k)
+          ));
       return matchesSearch && matchesCategory;
     });
   }, [products, search, category]);
 
-  // Lọc và tìm kiếm cho Carbon Credits
-  const filteredCarbonCredits = useMemo(() => {
-    return carbonCredits.filter((c) =>
-      c.name.toLowerCase().includes(search.toLowerCase())
-    );
-  }, [carbonCredits, search]);
-
   // Phân trang - chỉ áp dụng khi có bộ lọc
   const productsTotalPages = isUsingFilter ? Math.ceil(filteredProducts.length / itemsPerPage) : 1;
-  const carbonCreditsTotalPages = isUsingFilter ? Math.ceil(filteredCarbonCredits.length / itemsPerPage) : 1;
 
   const productsStartIndex = (currentPage - 1) * itemsPerPage;
-  const carbonCreditsStartIndex = (currentPage - 1) * itemsPerPage;
 
   const paginatedProducts = isUsingFilter
     ? filteredProducts.slice(productsStartIndex, productsStartIndex + itemsPerPage)
     : filteredProducts;
 
-  const paginatedCarbonCredits = isUsingFilter
-    ? filteredCarbonCredits.slice(carbonCreditsStartIndex, carbonCreditsStartIndex + itemsPerPage)
-    : filteredCarbonCredits;
-
-  // Sản phẩm nổi bật - luôn hiển thị cả Products và Carbon Credits
+  // Sản phẩm nổi bật - luôn hiển thị cả Products
   const featuredProducts = useMemo(() => products.slice(0, 3), [products]);
-  const featuredCarbonCredits = useMemo(() => carbonCredits.slice(0, 3), [carbonCredits]);
 
   // Xác định loại item để render
-  const getItemType = (item: Product | CarbonCredit): "Product" | "CarbonCredit" => {
-    return "price" in item ? "Product" : "CarbonCredit";
+  const getItemType = (item: Product): "Product" => {
+    return "price" in item ? "Product" : "Product";
   };
 
   // Render section cho Products
   const renderProductsSection = () => {
-    if (contentType === "Carbon Credits") return null;
-
     const productsToShow = isUsingFilter ? paginatedProducts : filteredProducts;
     const productsCount = isUsingFilter ? filteredProducts.length : products.length;
     const productsPages = isUsingFilter ? productsTotalPages : 1;
@@ -92,7 +77,7 @@ const Shop = () => {
       <div className="mb-12">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-green-700 dark:text-green-400 flex items-center gap-2">
-            <Package className="w-6 h-6" /> Sản phẩm cao cấp
+            <Package className="w-6 h-6" /> Tài sản sinh học cao cấp
           </h2>
           {isUsingFilter && (
             <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -102,11 +87,11 @@ const Shop = () => {
         </div>
 
         {(isLoadingProducts) ? (
-          <p className="text-center text-gray-500">Đang tải sản phẩm...</p>
+          <p className="text-center text-gray-500">Đang tải tài sản...</p>
         ) : (isErrorProducts) ? (
-          <p className="text-center text-red-500">Không thể tải sản phẩm 😢</p>
+          <p className="text-center text-red-500">Không thể tải tài sản 😢</p>
         ) : productsToShow.length === 0 ? (
-          <p className="text-center text-gray-600">Không tìm thấy sản phẩm phù hợp.</p>
+          <p className="text-center text-gray-600">Không tìm thấy tài sản phù hợp.</p>
         ) : (
           <>
             <motion.div
@@ -150,78 +135,6 @@ const Shop = () => {
     );
   };
 
-  // Render section cho Carbon Credits
-  const renderCarbonCreditsSection = () => {
-    if (contentType === "Products") return null;
-
-    const creditsToShow = isUsingFilter ? paginatedCarbonCredits : filteredCarbonCredits;
-    const creditsCount = isUsingFilter ? filteredCarbonCredits.length : carbonCredits.length;
-    const creditsPages = isUsingFilter ? carbonCreditsTotalPages : 1;
-
-    return (
-      <div className="mb-12">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-blue-700 dark:text-blue-400 flex items-center gap-2">
-            <Cloud className="w-6 h-6" /> Tín chỉ carbon
-          </h2>
-          {isUsingFilter && (
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              {creditsCount} kết quả
-            </div>
-          )}
-        </div>
-
-        {(isLoadingCarbonCredits) ? (
-          <p className="text-center text-gray-500">Đang tải tín chỉ carbon...</p>
-        ) : (isErrorCarbonCredits) ? (
-          <p className="text-center text-red-500">Không thể tải tín chỉ carbon 😢</p>
-        ) : creditsToShow.length === 0 ? (
-          <p className="text-center text-gray-600">Không tìm thấy tín chỉ carbon phù hợp.</p>
-        ) : (
-          <>
-            <motion.div
-              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ staggerChildren: 0.15 }}
-            >
-              {creditsToShow.map((credit) => (
-                <motion.div key={credit.id}>
-                  <Link to={`/carbon-credit/${credit.id}`}>
-                    <CarbonCard credit={credit} />
-                  </Link>
-                </motion.div>
-              ))}
-            </motion.div>
-
-            {/* Pagination cho Carbon Credits */}
-            {isUsingFilter && creditsPages > 1 && (
-              <div className="flex justify-center items-center gap-3 mt-10">
-                <Button
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage((p) => p - 1)}
-                  className="bg-blue-600 text-white hover:bg-blue-700"
-                >
-                  ← Trước
-                </Button>
-                <span className="font-semibold">
-                  Trang {currentPage} / {creditsPages}
-                </span>
-                <Button
-                  disabled={currentPage === creditsPages}
-                  onClick={() => setCurrentPage((p) => p + 1)}
-                  className="bg-blue-600 text-white hover:bg-blue-700"
-                >
-                  Sau →
-                </Button>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    );
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white dark:from-gray-900 dark:to-gray-800 transition-all">
       {/* Hero Section */}
@@ -233,10 +146,10 @@ const Shop = () => {
           transition={{ duration: 0.6 }}
           className="relative text-5xl font-bold drop-shadow-lg"
         >
-          Đầu tư nông sản cao cấp & tín chỉ carbon
+          Đầu tư tài sản sinh học cao cấp
         </motion.h1>
         <p className="relative text-lg mt-3 opacity-90">
-          Khám phá các sản phẩm tươi sạch và tín chỉ carbon từ nông trại Việt 🌾
+          Khám phá các tài sản sinh học quý hiếm từ Việt Nam 🌿
         </p>
       </section>
 
@@ -259,32 +172,11 @@ const Shop = () => {
               }}
               className="mb-4"
             />
-
-            {/* Bộ chọn loại nội dung */}
-            <div className="mb-4">
-              <label className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-1 mb-2">
-                <Tag className="w-4 h-4" /> Loại nội dung
-              </label>
-              <select
-                value={contentType}
-                onChange={(e) => {
-                  setContentType(e.target.value as "All" | "Products" | "Carbon Credits");
-                  setCategory("");
-                  setCurrentPage(1);
-                }}
-                className="w-full border rounded-lg p-2 mb-2 dark:bg-gray-700 dark:text-white"
-              >
-                <option value="All">Tất cả</option>
-                <option value="Products">Sản phẩm cao cấp</option>
-                <option value="Carbon Credits">Tín chỉ carbon</option>
-              </select>
-            </div>
-
             {/* Bộ lọc danh mục (chỉ hiển thị khi chọn Products) */}
             {contentType === "Products" && (
               <>
                 <label className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-1 mb-2">
-                  <Tag className="w-4 h-4" /> Loại sản phẩm
+                  <Tag className="w-4 h-4" /> Loại tài sản
                 </label>
                 <select
                   value={category}
@@ -295,15 +187,16 @@ const Shop = () => {
                   className="w-full border rounded-lg p-2 mb-2 dark:bg-gray-700 dark:text-white"
                 >
                   <option value="">Tất cả</option>
-                  <option value="Trái cây">Trái cây</option>
-                  <option value="Rau củ">Rau củ</option>
-                  <option value="Cà phê">Cà phê</option>
+                  <option value="Sâm">Sâm</option>
+                  <option value="Nấm">Nấm</option>
+                  <option value="Cây cảnh">Cây cảnh</option>
+                  <option value="Trầm hương">Trầm hương</option>
                 </select>
               </>
             )}
           </div>
 
-          {/* Sản phẩm nổi bật - hiển thị cả Products và Carbon Credits */}
+          {/* Tài sản nổi bật - hiển thị cả Products */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-green-100 dark:border-gray-700">
             <h2 className="text-xl font-bold text-green-600 mb-5 flex items-center gap-2">
               <Star className="w-5 h-5 text-yellow-500" /> Nổi bật
@@ -313,7 +206,7 @@ const Shop = () => {
               {/* Products nổi bật */}
               <div className="border-b border-gray-200 dark:border-gray-700 pb-5 space-y-3">
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium uppercase tracking-wide">
-                  Sản phẩm cao cấp
+                  Tài sản sinh học cao cấp
                 </p>
                 {featuredProducts.map((fp) => (
                   <Link
@@ -335,52 +228,20 @@ const Shop = () => {
                   </Link>
                 ))}
               </div>
-
-              {/* Carbon Credits nổi bật */}
-              <div className="space-y-3">
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium uppercase tracking-wide">
-                  Tín chỉ carbon
-                </p>
-                {featuredCarbonCredits.map((cc) => (
-                  <Link
-                    to={`/carbon-credit/${cc.id}`}
-                    key={`c-${cc.id}`}
-                    className="flex items-center gap-3 bg-blue-50 dark:bg-gray-700 p-3 rounded-xl hover:bg-blue-100 dark:hover:bg-gray-600 transition-all shadow-sm"
-                  >
-                    <img
-                      src={cc.image}
-                      alt={cc.name}
-                      className="w-16 h-16 object-cover rounded-lg"
-                    />
-                    <div className="flex flex-col justify-center">
-                      <p className="text-sm font-semibold text-blue-800 leading-tight">
-                        {cc.name}
-                      </p>
-                      <p className="text-xs text-blue-600 dark:text-blue-400">
-                        {cc.pricePerTon.toLocaleString("vi-VN")} VNĐ/tấn CO₂
-                      </p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
             </div>
           </div>
-
         </aside>
 
         {/* Khu vực chính */}
         <main className="flex-1">
-          {(isLoadingProducts || isLoadingCarbonCredits) ? (
+          {(isLoadingProducts) ? (
             <p className="text-center text-gray-500">Đang tải dữ liệu...</p>
-          ) : (isErrorProducts || isErrorCarbonCredits) ? (
+          ) : (isErrorProducts) ? (
             <p className="text-center text-red-500">Không thể tải dữ liệu 😢</p>
           ) : (
             <>
               {/* Render Products Section */}
               {renderProductsSection()}
-
-              {/* Render Carbon Credits Section */}
-              {renderCarbonCreditsSection()}
             </>
           )}
         </main>
