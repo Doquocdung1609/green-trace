@@ -37,6 +37,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Product, Certification, TimelineEntry } from '../../types/types';
 import trackasiagl from 'trackasia-gl';
 import React from 'react';
+import { Metaplex, walletAdapterIdentity} from '@metaplex-foundation/js';
 
 const timelineDefaults = [
   { title: 'Trồng trọt', desc: 'Bắt đầu gieo trồng sản phẩm.' },
@@ -175,12 +176,13 @@ const AddProduct = () => {
   const [mapErrors, setMapErrors] = useState<{ [key: number]: string | null }>({});
   const mapRefs = useRef<(trackasiagl.Map | null)[]>([]);
   const markerRefs = useRef<(trackasiagl.Marker | null)[]>([]);
-  const debounceTimers = useRef<{ [key: number]: number | null }>({});
+  const debounceTimers = useRef<{ [key: number]: NodeJS.Timeout | null }>({});
   const observerRefs = useRef<(MutationObserver | null)[]>([]);
   const mapContainerRefs = useRef<(HTMLDivElement | null)[]>([]);
   const wallet = useWallet();
   const { connection } = useConnection();
   const queryClient = useQueryClient();
+  const metaplex = Metaplex.make(connection).use(walletAdapterIdentity(wallet));
 
 
   const { mutate: add } = useMutation({
@@ -231,12 +233,14 @@ const AddProduct = () => {
 
   // Debounce utility
   const debounce = (func: (...args: any[]) => void, wait: number) => {
-    let timeout: number;
-    return (...args: any[]) => {
+  let timeout: NodeJS.Timeout | null;
+  return (...args: any[]) => {
+    if (timeout) {
       clearTimeout(timeout);
-      timeout = setTimeout(() => func(...args), wait);
-    };
+    }
+    timeout = setTimeout(() => func(...args), wait);
   };
+};
 
   // Define pulsing dot for each map
   const createPulsingDot = (map: trackasiagl.Map) => {
@@ -718,72 +722,168 @@ const AddProduct = () => {
     [form, fetchAutocompleteSuggestions]
   );
 
-  const onSubmit = async (data: FormData) => {
+    const onSubmit = async (data: FormData) => {
     try {
-      if (!wallet.publicKey) {
+      if (!wallet.publicKey || !wallet.connected) {
         throw new Error('Vui lòng kết nối ví Solana.');
       }
 
-      // Prepare FormData for multipart/form-data
-      const formData = new FormData();
-      formData.append('name', data.name);
-      formData.append('description', data.description);
-      formData.append('price', data.price.toString());
-      formData.append('origin', data.origin);
-      formData.append('farmerName', data.farmerName);
-      formData.append('productionDate', data.productionDate);
-      formData.append('quantity', data.quantity.toString());
-      formData.append('timeline', JSON.stringify(data.timeline));
-      formData.append('publicKey', wallet.publicKey.toBase58());
-      formData.append('roi', data.roi.toString());
-      formData.append('growthRate', data.growthRate.toString());
-      formData.append('age', data.age.toString());
-      formData.append('iotStatus', data.iotStatus);
-      formData.append('iotData', JSON.stringify(data.iotData));
-
-      // Append image file
+      // Step 1: Upload image to IPFS via backend
+      const imageFormData = new FormData();
       if (data.image instanceof File) {
-        formData.append('image', data.image, data.image.name);
+        imageFormData.append('file', data.image);
       } else {
         throw new Error('Hình ảnh sản phẩm không hợp lệ.');
       }
-
-      // Append certification files
-      (data.certifications || []).forEach((cert, index) => {
-        if (cert.file instanceof File) {
-          formData.append('certifications', cert.file, cert.file.name);
-          formData.append(`certificationNames[${index}]`, cert.name);
-        }
-      });
-
-      // Call backend API to mint NFT
-      const response = await fetch('http://localhost:3000/mint-nft', {
+      let response = await fetch('http://localhost:3000/upload-ipfs', {
         method: 'POST',
-        body: formData,
+        body: imageFormData,
       });
+      if (!response.ok) throw new Error('Lỗi upload ảnh lên IPFS');
+      const { cid: imageCid } = await response.json();
+      const imageUri = `https://gateway.pinata.cloud/ipfs/${imageCid}`;
 
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || 'Minting failed');
-      }
+      // Step 2: Upload each certification file to IPFS and prepare data
+      const certificationsWithIpfs = await Promise.all(
+        (data.certifications || []).map(async (cert) => {
+          if (cert.file instanceof File) {
+            const certFormData = new FormData();
+            certFormData.append('file', cert.file);
+            response = await fetch('http://localhost:3000/upload-ipfs', {
+              method: 'POST',
+              body: certFormData,
+            });
+            if (!response.ok) throw new Error('Lỗi upload chứng nhận lên IPFS');
+            const { cid: certCid } = await response.json();
+            return { name: cert.name, file: `https://gateway.pinata.cloud/ipfs/${certCid}` };
+          }
+          return { name: cert.name, file: '' }; // Fallback if no file
+        })
+      );
 
-      console.log(`NFT Minted Successfully!`);
-      console.log(`Transaction: ${result.explorerUrl}`);
-      console.log(`Mint Address: https://explorer.solana.com/address/${result.mintAddress}?cluster=devnet`);
-      console.log(`Metadata URI: ${result.metadataUri}`);
+      // Step 3: Upload certifications array as JSON to IPFS
+      response = await fetch('http://localhost:3000/upload-json-ipfs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ json: certificationsWithIpfs }),
+      });
+      if (!response.ok) throw new Error('Lỗi upload certifications JSON lên IPFS');
+      const { cid: certsCid } = await response.json();
+      const certsUri = `https://gateway.pinata.cloud/ipfs/${certsCid}`;
 
-      const newProduct: Omit<Product, 'id' | 'blockchainTxId'> = {
-        ...data,
-        image: URL.createObjectURL(data.image), // Store as URL for display
-        certifications: (data.certifications || []).map(({ name, file }) => ({
-          name,
-          file: file instanceof File ? URL.createObjectURL(file) : '',
-        })),
-        timeline: data.timeline,
-        quantity: data.quantity,
+      // Step 4: Upload timeline array as JSON to IPFS
+      response = await fetch('http://localhost:3000/upload-json-ipfs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ json: data.timeline }),
+      });
+      if (!response.ok) throw new Error('Lỗi upload timeline JSON lên IPFS');
+      const { cid: timelineCid } = await response.json();
+      const timelineUri = `https://gateway.pinata.cloud/ipfs/${timelineCid}`;
+
+      // Step 5: Create NFT metadata JSON with all attributes
+      const metadata = {
+        name: data.name,
+        symbol: 'BIO',
+        description: data.description,
+        image: imageUri,
+        attributes: [
+          { trait_type: 'Origin', value: data.origin },
+          { trait_type: 'Farmer Name', value: data.farmerName },
+          { trait_type: 'Production Date', value: data.productionDate },
+          { trait_type: 'Age', value: data.age.toString() },
+          { trait_type: 'Growth Rate', value: data.growthRate.toString() },
+          { trait_type: 'ROI', value: data.roi.toString() },
+          { trait_type: 'Quantity', value: data.quantity.toString() },
+          { trait_type: 'Price', value: data.price.toString() },
+          { trait_type: 'IoT Status', value: data.iotStatus },
+          { trait_type: 'IoT Height', value: data.iotData.height.toString() },
+          { trait_type: 'IoT Growth Per Month', value: data.iotData.growthPerMonth.toString() },
+          { trait_type: 'IoT Humidity', value: data.iotData.humidity.toString() },
+          { trait_type: 'IoT Temperature', value: data.iotData.temperature.toString() },
+          { trait_type: 'IoT pH', value: data.iotData.pH.toString() },
+          { trait_type: 'IoT Last Updated', value: data.iotData.lastUpdated },
+          { trait_type: 'Certifications URI', value: certsUri },
+          { trait_type: 'Timeline URI', value: timelineUri },
+        ],
+        properties: {
+          files: [
+            { uri: imageUri, type: data.image.type },
+            { uri: certsUri, type: 'application/json' },
+            { uri: timelineUri, type: 'application/json' },
+          ],
+          category: 'image',
+        },
+        external_url: 'https://your-app-url.com', // Optional: link to app's product page
       };
 
-      add({ newProduct, blockchainTxId: result.signature });
+      console.log('Metadata:', JSON.stringify(metadata, null, 2));
+
+      // Step 6: Upload metadata JSON to IPFS via backend
+      response = await fetch('http://localhost:3000/upload-json-ipfs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ json: metadata }),
+      });
+      if (!response.ok) throw new Error('Lỗi upload metadata lên IPFS');
+      const { cid: metadataCid } = await response.json();
+      const metadataUri = `https://gateway.pinata.cloud/ipfs/${metadataCid}`;
+
+      // Step 7: Mint NFT using Metaplex (Programmable NFT with Token 2022)
+      const { nft, response: mintResponse } = await metaplex.nfts().create({
+        uri: metadataUri,
+        name: data.name,
+        symbol: 'BIO',
+        sellerFeeBasisPoints: 500, // 5% royalty
+        isMutable: true,
+        maxSupply: 1,
+        tokenStandard: 0, // Token 2022
+        tokenOwner: wallet.publicKey,
+      });
+
+     await metaplex.nfts().transfer({
+  nftOrSft: nft,
+  toOwner: wallet.publicKey,
+});
+
+
+console.log(`NFT transferred to your wallet: ${wallet.publicKey.toBase58()}`);
+
+      const mintAddress = nft.mint.address.toBase58();
+      const signature = mintResponse.signature;
+
+      console.log(`NFT Minted Successfully!`);
+      console.log(`Transaction: https://explorer.solana.com/tx/${signature}?cluster=devnet`);
+      console.log(`Mint Address: https://explorer.solana.com/address/${mintAddress}?cluster=devnet`);
+      console.log(`Metadata URI: ${metadataUri}`);
+
+      // Step 8: Save product to backend with blockchainTxId as mint address
+      const newProduct: Omit<Product, 'id' | 'blockchainTxId'> = {
+        name: data.name,
+        description: data.description,
+        roi: data.roi,
+        price: data.price,
+        image: imageUri,
+        origin: data.origin,
+        farmerName: data.farmerName,
+        productionDate: data.productionDate,
+        quantity: data.quantity,
+        timeline: data.timeline,
+        certifications: certificationsWithIpfs,
+        growthRate: data.growthRate,
+        age: data.age,
+        iotStatus: data.iotStatus,
+        iotData: data.iotData,
+        // priceHistory will be generated in backend mock
+      };
+      add({ newProduct, blockchainTxId: mintAddress });
+
+      // Step 9: Provide MagicEden listing link
+      toast({
+        title: 'Mint NFT thành công!',
+        description: `NFT đã được mint với đầy đủ thuộc tính và dữ liệu. Bạn có thể đăng bán trên MagicEden: https://magiceden.io/item-details/${mintAddress}?chain=solana`,
+      });
+
     } catch (error: any) {
       toast({
         title: 'Lỗi khi mint NFT hoặc thêm sản phẩm',

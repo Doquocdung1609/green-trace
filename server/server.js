@@ -3,10 +3,20 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcrypt');
+const multer = require('multer');
+const fs = require('fs');
+const pinataSDK = require('@pinata/sdk');
 
 
 const app = express();
 const port = 3000;
+
+const pinata = new pinataSDK({
+  pinataApiKey: '0df2b918f2c4f7beab1d',
+  pinataSecretApiKey: '8d14f00c90a8860bff3bccfa63f5ced599538d6958ec44fc99e2e578869db8a7',
+});
+
+const upload = multer({ dest: 'uploads/' });
 
 // Middleware
 app.use(cors());
@@ -726,6 +736,44 @@ app.post('/api/auth/register', async (req, res) => {
 // Wallet Endpoint
 app.get('/api/wallet', (req, res) => {
   res.json(wallet);
+});
+
+app.post('/upload-ipfs', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    console.log('Uploading file:', req.file.originalname, req.file.path, req.file.size);
+    const readableStream = fs.createReadStream(req.file.path);
+    const options = { pinataMetadata: { name: req.file.originalname } };
+    const result = await pinata.pinFileToIPFS(readableStream, options);
+    console.log('Pinata response:', result);
+    fs.unlinkSync(req.file.path);
+    res.json({ cid: result.IpfsHash });
+  } catch (error) {
+    console.error('Error uploading to Pinata:', error.message, error.stack);
+    res.status(500).json({ error: 'Failed to upload to IPFS', details: error.message });
+  }
+});
+
+// Endpoint to upload JSON (metadata) to Pinata IPFS
+app.post('/upload-json-ipfs', async (req, res) => {
+  try {
+    const jsonData = req.body.json;
+    if (!jsonData) {
+      return res.status(400).json({ error: 'No JSON data provided' });
+    }
+    const options = {
+      pinataMetadata: {
+        name: 'NFT Metadata',
+      },
+    };
+    const result = await pinata.pinJSONToIPFS(jsonData, options);
+    res.json({ cid: result.IpfsHash });
+  } catch (error) {
+    console.error('Error uploading JSON to Pinata:', error);
+    res.status(500).json({ error: 'Failed to upload JSON to IPFS' });
+  }
 });
 
 // Start server
