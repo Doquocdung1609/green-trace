@@ -1,4 +1,3 @@
-// Products.tsx (updated with edit/delete)
 import React from 'react';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
@@ -6,7 +5,7 @@ import { Button } from '../../components/ui/button';
 import { fetchProducts, deleteProduct } from '../../services/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Leaf, CheckCircle, XCircle } from 'lucide-react';
+import { Leaf } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Product } from '../../types/types';
 
@@ -25,7 +24,7 @@ const Products: React.FC = () => {
   });
 
   const handleDelete = (id: string) => {
-    if (confirm('Bạn có chắc muốn xóa sản phẩm này?')) {
+    if (confirm('Bạn có chắc muốn xóa NFT này?')) {
       del(id);
     }
   };
@@ -44,10 +43,10 @@ const Products: React.FC = () => {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-primary flex items-center">
             <Leaf className="w-8 h-8 mr-2 text-green-600" />
-            Danh sách sản phẩm
+            Danh sách NFT
           </h1>
           <Button asChild className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700">
-            <Link to="/farmer/add-product">Thêm mới</Link>
+            <Link to="/farmer/add-product">Tạo NFT mới</Link>
           </Button>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-green-200 dark:border-green-700 overflow-hidden">
@@ -55,9 +54,8 @@ const Products: React.FC = () => {
             <TableHeader>
               <TableRow className="bg-green-50 dark:bg-gray-700">
                 <TableHead>Tên</TableHead>
-                <TableHead>Giá (VNĐ)</TableHead>
+                <TableHead>Giá (SOL)</TableHead>
                 <TableHead>Số lượng</TableHead>
-                <TableHead>Còn hàng</TableHead>
                 <TableHead>Thao tác</TableHead>
               </TableRow>
             </TableHeader>
@@ -78,6 +76,9 @@ const Products: React.FC = () => {
                       <Link to={`/farmer/edit-product/${product.id}`}>Sửa</Link>
                     </Button>
                     <Button variant="destructive" onClick={() => handleDelete(product.id)}>Xóa</Button>
+                    <Button variant="secondary" onClick={() => window.open(`https://magiceden.io/item-details/${product.blockchainTxId}`, '_blank')}>
+                      Đăng bán trên Magic Eden
+                    </Button>
                   </TableCell>
                 </motion.tr>
               ))}

@@ -25,8 +25,8 @@ const FarmerDashboard = () => (
       </h1>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {[
-          { icon: Leaf, title: 'Tổng sản phẩm', value: '10' },
-          { icon: ShoppingBag, title: 'Đơn hàng', value: '5' },
+          { icon: Leaf, title: 'Tổng NFT', value: '10' },
+          { icon: ShoppingBag, title: 'NFT đã bán', value: '5' },
           { icon: DollarSign, title: 'Doanh thu', value: '10M VND' },
         ].map((item, idx) => (
           <motion.div key={idx} whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>

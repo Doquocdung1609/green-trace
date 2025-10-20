@@ -1,23 +1,20 @@
 import { motion } from 'framer-motion';
 import { Parallax } from 'react-parallax';
-import { Link } from 'react-router-dom';
 import Lottie from 'lottie-react';
 import leafAnim from '../../assets/leaves.json';
 import Header from '../../components/ui/Header';
 import Footer from '../../components/ui/Footer';
+import { Cpu, Coins, Leaf } from 'lucide-react';
 import ProductCard from '../../components/ui/ProductCard';
-import { fetchProducts} from '../../services/api';
+import type { Product } from '../../types/types';
 import { useQuery } from '@tanstack/react-query';
-import { Cpu, Coins, Satellite, Cloud, Leaf } from 'lucide-react';
-import type { Product} from '../../types/types';
+import { fetchProducts } from '../../services/api';
 
 const Home = () => {
   const { data: products, isLoading, isError } = useQuery({
     queryKey: ['products'],
     queryFn: fetchProducts,
   });
-
-
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-green-50 to-white dark:from-gray-900 dark:to-gray-800 transition-all">
       <Header />
@@ -46,14 +43,14 @@ const Home = () => {
             GreenTrace 2.0 🌱
           </motion.h1>
           <p className="text-lg md:text-xl font-medium mb-8">
-            Tokenized Sustainable Assets – Đầu tư sinh học, minh bạch tăng trưởng bằng IoT & Blockchain Solana
+            Tokenized Sustainable Assets – Đầu tư sinh học minh bạch, tăng trưởng bằng IoT & Blockchain Solana
           </p>
           <motion.a
-            href="/market"
+            href="/farmer/add-product"
             whileHover={{ scale: 1.05 }}
             className="inline-block bg-white text-green-700 font-semibold px-8 py-3 rounded-full shadow-lg hover:bg-green-100 transition"
           >
-            Khám phá tài sản sinh học
+            Tạo NFT BioAsset
           </motion.a>
         </motion.section>
       </Parallax>
@@ -70,12 +67,12 @@ const Home = () => {
             {
               icon: <Coins className="w-12 h-12 mx-auto text-green-600 mb-4" />,
               title: 'NFT Ownership',
-              desc: 'Tài sản được mã hóa thành NFT – đảm bảo quyền sở hữu minh bạch và giao dịch được trên Solana.',
+              desc: 'Tài sản được mã hóa thành NFT – đảm bảo quyền sở hữu minh bạch và giao dịch được trên Solana/Magic Eden.',
             },
             {
               icon: <Cpu className="w-12 h-12 mx-auto text-green-600 mb-4" />,
-              title: 'Smart Yield & DeFi Integration',
-              desc: 'Đầu tư sinh lời từ tăng trưởng sinh học, và staking sinh thái.',
+              title: 'Smart Yield',
+              desc: 'Theo dõi hiệu quả đầu tư và sinh lời bền vững từ tăng trưởng sinh học.',
             },
           ].map((item, idx) => (
             <motion.div
@@ -116,8 +113,6 @@ const Home = () => {
         )}
       </section>
 
-      
-
       {/* CTA Section */}
       <motion.section
         className="text-center py-20 bg-gradient-to-r from-green-100 to-green-200 dark:from-green-800 dark:to-green-700"
@@ -125,16 +120,24 @@ const Home = () => {
         whileInView={{ opacity: 1 }}
         transition={{ duration: 0.6 }}
       >
-        <h3 className="text-2xl font-semibold mb-4">Bắt đầu hành trình đầu tư sinh học 🌳</h3>
+        <h3 className="text-2xl font-semibold mb-4">Bắt đầu hành trình với GreenTrace 🌳</h3>
         <p className="mb-6 text-gray-700 dark:text-gray-300">
-          Trở thành nhà đầu tư đầu tiên của tài sản tự nhiên minh bạch, sinh lời bền vững.
+          Farmer tạo NFT BioAsset, nhà đầu tư theo dõi tài sản trên Solana/Magic Eden.
         </p>
-        <a
-          href="/register"
-          className="bg-green-700 text-white px-8 py-3 rounded-full font-medium shadow hover:bg-green-800 transition-all"
-        >
-          Đăng ký ngay
-        </a>
+        <div className="flex justify-center gap-4 flex-wrap">
+          <a
+            href="/farmer/add-product"
+            className="bg-green-700 text-white px-8 py-3 rounded-full font-medium shadow hover:bg-green-800 transition-all"
+          >
+            Tạo NFT
+          </a>
+          <a
+            href="/shop"
+            className="bg-white text-green-700 px-8 py-3 rounded-full font-medium shadow hover:bg-green-100 transition-all"
+          >
+            Xem NFT trên sàn
+          </a>
+        </div>
       </motion.section>
 
       <Footer />

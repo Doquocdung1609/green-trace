@@ -12,7 +12,7 @@ import { Button } from '../../components/ui/button';
 import { Textarea } from '../../components/ui/textarea';
 import { motion } from 'framer-motion';
 import { User } from 'lucide-react';
-import ToastNotification from '../../components/ui/ToastNotification'; // ✅ Import toast
+import ToastNotification from '../../components/ui/ToastNotification';
 
 const schema = z.object({
   fullName: z.string().min(3, 'Họ tên phải có ít nhất 3 ký tự'),
@@ -42,7 +42,6 @@ const Profile = () => {
 
   const { publicKey, connected } = useWallet();
 
-  // ✅ State quản lý ToastNotification
   const [toast, setToast] = useState({
     visible: false,
     message: '',
@@ -76,7 +75,6 @@ const Profile = () => {
 
   return (
     <DashboardLayout role="farmer">
-      {/* ✅ Hiển thị ToastNotification */}
       <ToastNotification
         message={toast.message}
         visible={toast.visible}
@@ -155,7 +153,7 @@ const Profile = () => {
                   </FormItem>
                 )} />
                 <p className="text-gray-600 dark:text-gray-300 text-sm">
-                  * Thông tin này giúp xác minh danh tính và tăng độ tin cậy cho sản phẩm của bạn.
+                  * Thông tin này giúp xác minh danh tính và tăng độ tin cậy cho NFT của bạn.
                 </p>
               </TabsContent>
 
@@ -170,7 +168,7 @@ const Profile = () => {
                   </div>
                 ) : (
                   <p className="text-gray-600 dark:text-gray-300 text-sm">
-                    Kết nối ví Solana để nhận thanh toán và mint NFT.
+                    Kết nối ví Solana để mint NFT.
                   </p>
                 )}
               </TabsContent>

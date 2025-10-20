@@ -20,6 +20,13 @@ import {
   TabsList,
   TabsTrigger,
 } from '../../components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/select';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
@@ -77,6 +84,18 @@ const schema = z.object({
       },
       { message: 'Ngày của các mốc thời gian phải theo thứ tự từ sớm đến muộn', path: ['timeline'] }
     ),
+  roi: z.number().nonnegative('ROI phải lớn hơn hoặc bằng 0'),
+  growthRate: z.number().nonnegative('Tỷ lệ tăng trưởng phải lớn hơn hoặc bằng 0'),
+  age: z.number().nonnegative('Tuổi phải lớn hơn hoặc bằng 0'),
+  iotStatus: z.enum(['Đang theo dõi', 'Ngưng theo dõi', 'Lỗi cảm biến'] as const, { message: 'Trạng thái IoT không hợp lệ' }),
+  iotData: z.object({
+    height: z.number().nonnegative('Chiều cao phải lớn hơn hoặc bằng 0'),
+    growthPerMonth: z.number('Tăng trưởng/tháng có thể âm hoặc dương'),
+    humidity: z.number().min(0).max(100, 'Độ ẩm từ 0-100'),
+    temperature: z.number('Nhiệt độ có thể âm'),
+    pH: z.number().min(0).max(14, 'pH từ 0-14'),
+    lastUpdated: z.string().min(1, 'Ngày cập nhật cuối là bắt buộc'),
+  }),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -137,6 +156,18 @@ const EditProduct = () => {
       quantity: 0,
       certifications: [],
       timeline: [],
+      roi: 0,
+      growthRate: 0,
+      age: 0,
+      iotStatus: 'Đang theo dõi',
+      iotData: {
+        height: 0,
+        growthPerMonth: 0,
+        humidity: 0,
+        temperature: 0,
+        pH: 0,
+        lastUpdated: new Date().toISOString(),
+      },
     },
   });
 
@@ -149,22 +180,34 @@ const EditProduct = () => {
     name: 'certifications',
   });
 
-  useEffect(() => {
-    if (product) {
-      form.reset({
-        name: product.name,
-        description: product.description,
-        price: product.price,
-        image: product.image,
-        origin: product.origin,
-        farmerName: product.farmerName,
-        productionDate: product.productionDate,
-        quantity: product.quantity,
-        certifications: product.certifications,
-        timeline: product.timeline,
-      });
-    }
-  }, [product, form]);
+useEffect(() => {
+  if (product) {
+    form.reset({
+      name: product.name ?? '',
+      description: product.description ?? '',
+      price: product.price ?? 0,
+      image: product.image ?? '',
+      origin: product.origin ?? '',
+      farmerName: product.farmerName ?? '',
+      productionDate: product.productionDate ?? '',
+      quantity: product.quantity ?? 0,
+      certifications: product.certifications ?? [],
+      timeline: product.timeline ?? [],
+      roi: product.roi ?? 0,
+      growthRate: product.growthRate ?? 0,
+      age: product.age ?? 0,
+      iotStatus: product.iotStatus ?? 'Đang theo dõi',
+      iotData: {
+        height: product.iotData?.height ?? 0,
+        growthPerMonth: product.iotData?.growthPerMonth ?? 0,
+        humidity: product.iotData?.humidity ?? 0,
+        temperature: product.iotData?.temperature ?? 0,
+        pH: product.iotData?.pH ?? 0,
+        lastUpdated: product.iotData?.lastUpdated ?? new Date().toISOString(),
+      },
+    });
+  }
+}, [product, form]);
 
   // Debounce utility
   const debounce = (func: (...args: any[]) => void, wait: number) => {
@@ -743,6 +786,7 @@ const EditProduct = () => {
               <TabsTrigger value="details">Chi tiết sản phẩm</TabsTrigger>
               <TabsTrigger value="timeline">Dòng thời gian</TabsTrigger>
               <TabsTrigger value="certifications">Chứng nhận</TabsTrigger>
+              <TabsTrigger value="growth">Thông tin tăng trưởng & IoT</TabsTrigger>
             </TabsList>
 
             <Form {...form}>
@@ -1108,6 +1152,198 @@ const EditProduct = () => {
                       <Plus className="w-4 h-4 mr-2" />
                       Thêm chứng nhận
                     </Button>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="growth" className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="roi"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>ROI (%)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="Nhập ROI..."
+                            {...field}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="growthRate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tỷ lệ tăng trưởng (%/năm)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="Nhập tỷ lệ tăng trưởng..."
+                            {...field}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="age"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tuổi (năm)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="Nhập tuổi..."
+                            {...field}
+                            onChange={(e) => field.onChange(parseInt(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="iotStatus"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Trạng thái IoT</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Chọn trạng thái IoT" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Đang theo dõi">Đang theo dõi</SelectItem>
+                            <SelectItem value="Ngưng theo dõi">Ngưng theo dõi</SelectItem>
+                            <SelectItem value="Lỗi cảm biến">Lỗi cảm biến</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Dữ liệu IoT</h3>
+                    <FormField
+                      control={form.control}
+                      name="iotData.height"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Chiều cao (cm)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="Nhập chiều cao..."
+                              {...field}
+                              onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="iotData.growthPerMonth"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tăng trưởng/tháng (cm)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="Nhập tăng trưởng/tháng..."
+                              {...field}
+                              onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="iotData.humidity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Độ ẩm (%)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="Nhập độ ẩm..."
+                              {...field}
+                              onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="iotData.temperature"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nhiệt độ (°C)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="Nhập nhiệt độ..."
+                              {...field}
+                              onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="iotData.pH"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>pH</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              placeholder="Nhập pH..."
+                              {...field}
+                              onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="iotData.lastUpdated"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Ngày cập nhật cuối (ISO)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="datetime-local"
+                              step="1"
+                              {...field}
+                              value={field.value ? new Date(field.value).toISOString().slice(0, 16) : ''}
+                              onChange={(e) => field.onChange(new Date(e.target.value).toISOString())}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </TabsContent>
 

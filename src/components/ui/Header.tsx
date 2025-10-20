@@ -40,23 +40,36 @@ const Header = () => {
         {/* Navigation */}
         <nav className="hidden md:flex gap-8 font-medium text-gray-700 dark:text-gray-200">
           {[
-            { to: "/", label: "Trang chủ" },
-            { to: "/market", label: "Thị trường" },
-            { to: "/about", label: "Giới thiệu" },
-            { to: "/contact", label: "Liên hệ" },
-          ].map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              className={clsx(
-                "transition-all hover:text-green-600 dark:hover:text-green-400",
-                location.pathname === link.to && "text-green-600 dark:text-green-400 font-semibold"
-              )}
-            >
-              {link.label}
-            </Link>
-          ))}
+            { to: "/", label: "Trang chủ", external: false },
+            { to: "https://magiceden.io", label: "Thị trường", external: true },
+            { to: "/about", label: "Giới thiệu", external: false },
+            { to: "/contact", label: "Liên hệ", external: false },
+          ].map((link) =>
+            link.external ? (
+              <a
+                key={link.to}
+                href={link.to}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="transition-all hover:text-green-600 dark:hover:text-green-400"
+              >
+                {link.label}
+              </a>
+            ) : (
+              <Link
+                key={link.to}
+                to={link.to}
+                className={clsx(
+                  "transition-all hover:text-green-600 dark:hover:text-green-400",
+                  location.pathname === link.to && "text-green-600 dark:text-green-400 font-semibold"
+                )}
+              >
+                {link.label}
+              </Link>
+            )
+          )}
         </nav>
+
 
         {/* Right side */}
         <div className="flex items-center gap-3">

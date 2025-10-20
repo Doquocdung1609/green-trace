@@ -3,7 +3,7 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { AuthContext } from '../../contexts/AuthContext';
 
 interface ProtectedRouteProps {
-  role: 'admin' | 'farmer' | 'customer';
+  role: 'farmer' | 'customer';
 }
 
 const ProtectedRoute = ({ role }: ProtectedRouteProps) => {

@@ -5,11 +5,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../../components/ui/form";
-import { mockLogin } from "../../services/mockAuth";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { motion } from 'framer-motion';
-import { Leaf } from 'lucide-react';
+import { motion } from "framer-motion";
+import { Leaf } from "lucide-react";
 import ToastNotification from "../../components/ui/ToastNotification";
+import { useAuth } from "../../contexts/AuthContext";
 
 const schema = z.object({
   email: z
@@ -17,14 +17,12 @@ const schema = z.object({
     .trim()
     .min(1, { message: "Không được bỏ trống ô này" })
     .email({ message: "Email không hợp lệ" }),
-
   password: z
     .string()
     .trim()
     .min(1, { message: "Không được bỏ trống ô này" })
     .min(6, { message: "Mật khẩu ít nhất 6 ký tự" }),
 });
-
 
 type FormData = z.infer<typeof schema>;
 
@@ -37,6 +35,8 @@ const Login = () => {
     },
   });
 
+  const { setUser } = useAuth(); // Lấy setUser từ AuthContext
+
   const [notif, setNotif] = React.useState({
     visible: false,
     message: "",
@@ -45,22 +45,30 @@ const Login = () => {
 
   const onSubmit = async (data: FormData) => {
     try {
-      const user = await mockLogin(data.email, data.password);
+      const response = await fetch("http://localhost:3000/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error("Sai thông tin đăng nhập");
+      }
+
+      const user = await response.json();
+      setUser(user); // Cập nhật user trong AuthContext
+      localStorage.setItem("currentUser", JSON.stringify(user)); // Lưu user vào localStorage
       setNotif({ visible: true, message: `🌿 Chào mừng ${user.name}!`, type: "success" });
 
       setTimeout(() => {
-        window.location.href =
-          user.role === "admin"
-            ? "/admin/dashboard"
-            : user.role === "farmer"
-              ? "/farmer/dashboard"
-              : "/shop";
+        window.location.href = user.role === "farmer" ? "/farmer/dashboard" : "/shop";
       }, 1200);
     } catch (error: any) {
       setNotif({ visible: true, message: error.message, type: "error" });
     }
   };
-
 
   return (
     <div className="flex items-center justify-center h-screen bg-gradient-to-br from-green-100 to-green-50 dark:from-gray-900 dark:to-gray-800">
@@ -104,7 +112,10 @@ const Login = () => {
               )}
             />
 
-            <Button type="submit" className="w-full rounded-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white">
+            <Button
+              type="submit"
+              className="w-full rounded-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white"
+            >
               Đăng nhập
             </Button>
           </form>
@@ -127,7 +138,6 @@ const Login = () => {
         onClose={() => setNotif({ ...notif, visible: false })}
         type={notif.type}
       />
-
     </div>
   );
 };

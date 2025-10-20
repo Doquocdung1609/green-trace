@@ -2,28 +2,19 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { LogOut, Leaf } from "lucide-react";
 import { Button } from "../components/ui/button";
-import { mockLogout } from "../services/mockAuth";
+import { useAuth } from "../contexts/AuthContext";
 
 const DashboardLayout = ({ children, role }: { children: React.ReactNode; role: string }) => {
+  const { logout } = useAuth(); // Lấy hàm logout từ AuthContext
+
   const links =
     role === "farmer"
       ? [
           { path: "/farmer/dashboard", label: "Tổng quan" },
           { path: "/farmer/products", label: "Sản phẩm" },
-          { path: "/farmer/trace", label: "Truy xuất nguồn gốc" },
-          { path: "/farmer/orders", label: "Đơn hàng" },
+          { path: "/farmer/profile", label: "Hồ sơ" },
         ]
-      : [
-          { path: "/admin/dashboard", label: "Tổng quan" },
-          { path: "/admin/users", label: "Người dùng" },
-          { path: "/admin/products", label: "Sản phẩm" },
-          { path: "/admin/orders", label: "Đơn hàng" },
-        ];
-
-  const logout = () => {
-    mockLogout();
-    window.location.href = "/login";
-  };
+      : [];
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-green-50 to-white dark:from-gray-900 dark:to-gray-800">
@@ -46,7 +37,7 @@ const DashboardLayout = ({ children, role }: { children: React.ReactNode; role: 
           </nav>
         </div>
         <Button
-          onClick={logout}
+          onClick={logout} // Sử dụng logout từ AuthContext
           variant="destructive"
           className="flex items-center gap-2 bg-red-500 hover:bg-red-600"
         >
