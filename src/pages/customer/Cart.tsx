@@ -9,7 +9,7 @@ import type { Product } from "../../types/types";
 
 const Cart = () => {
   const [cart, setCart] = useState<any[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     const loadData = async () => {

@@ -1,4 +1,3 @@
-import React from 'react';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent } from '../../components/ui/card';

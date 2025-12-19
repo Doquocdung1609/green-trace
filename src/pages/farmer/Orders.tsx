@@ -140,7 +140,6 @@ const OrdersFarmer: React.FC = () => {
                       {order.items.map((item, idx) => {
                         let product = products.find((p: Product) => p.id === item.productId);
 
-                        const fallbackName = `Sản phẩm ID: ${item.productId}`;
                         return (
                           <TableRow key={idx}>
                             <TableCell className="font-medium">

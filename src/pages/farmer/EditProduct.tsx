@@ -34,7 +34,7 @@ import { motion } from 'framer-motion';
 import { Leaf, Plus, Trash2 } from 'lucide-react';
 import { Toaster } from '../../components/ui/toaster';
 import { toast } from '../../hooks/use-toast';
-import type { Product, Certification, TimelineEntry } from '../../types/types';
+import type { Product} from '../../types/types';
 import trackasiagl from 'trackasia-gl';
 import React from 'react';
 
@@ -453,7 +453,7 @@ useEffect(() => {
           setMapErrors((prev) => ({ ...prev, [index]: 'Container is not a div element' }));
         }
       } else if (!container) {
-        const observer = new MutationObserver((mutations, obs) => {
+        const observer = new MutationObserver((_mutations, obs) => {
           const containerNow = document.getElementById(`map-container-${index}`);
           if (containerNow && containerNow instanceof HTMLDivElement) {
             mapContainerRefs.current[index] = containerNow;

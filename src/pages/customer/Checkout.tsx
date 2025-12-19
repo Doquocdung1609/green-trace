@@ -20,7 +20,6 @@ import trackasiagl from "trackasia-gl";
 import type { Product, Order } from "../../types/types";
 import { useAuth } from "../../contexts/AuthContext";
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { Transaction, SystemProgram, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
 
 // Define schema
