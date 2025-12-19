@@ -14,7 +14,7 @@ import FarmerProducts from './pages/farmer/Products';
 import FarmerAddProduct from './pages/farmer/AddProduct';
 import FarmerProfile from './pages/farmer/Profile';
 import Shop from './pages/customer/Shop';
-// import ProductDetail from './pages/customer/ProductDetail';
+import ProductDetail from './pages/customer/ProductDetail';
 // import Cart from './pages/customer/Cart';
 
 import CustomerProfile from './pages/customer/Profile';
@@ -55,7 +55,7 @@ function App() {
               <Route element={<ProtectedRoute role="customer" />}>
                 <Route element={<CustomerLayout />}>
                   <Route path="/shop" element={<Shop />} />
-                  {/* <Route path="/product/:id" element={<ProductDetail />} /> */}
+                  <Route path="/product/:id" element={<ProductDetail />} />
                   {/* <Route path="/cart" element={<Cart />} /> */}
                   <Route path="/profile" element={<CustomerProfile />} />
                 </Route>

@@ -26,6 +26,9 @@ const CustomerLayout = () => {
 
           {/* Navigation */}
           <nav className="flex items-center gap-6 font-medium text-gray-700 dark:text-gray-200">
+            <Link to="/shop" className="hover:text-green-600 dark:hover:text-green-400">
+              Cửa hàng
+            </Link>
             <a
               href="https://magiceden.io"
               target="_blank"

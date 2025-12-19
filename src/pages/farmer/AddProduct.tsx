@@ -834,10 +834,10 @@ const AddProduct = () => {
         uri: metadataUri,
         name: data.name,
         symbol: 'BIO',
-        sellerFeeBasisPoints: 500, // 5% royalty
+        sellerFeeBasisPoints: 500, 
         isMutable: true,
         maxSupply: 1,
-        tokenStandard: 0, // Token 2022
+        tokenStandard: 0, 
         tokenOwner: wallet.publicKey,
       });
 
@@ -881,7 +881,7 @@ console.log(`NFT transferred to your wallet: ${wallet.publicKey.toBase58()}`);
       // Step 9: Provide MagicEden listing link
       toast({
         title: 'Mint NFT thành công!',
-        description: `NFT đã được mint với đầy đủ thuộc tính và dữ liệu. Bạn có thể đăng bán trên MagicEden: https://magiceden.io/item-details/${mintAddress}?chain=solana`,
+        description: `NFT đã được mint với đầy đủ thuộc tính và dữ liệu. Bạn có thể đăng bán `,
       });
 
     } catch (error: any) {
@@ -1518,9 +1518,6 @@ console.log(`NFT transferred to your wallet: ${wallet.publicKey.toBase58()}`);
                 </TabsContent>
 
                 <TabsContent value="blockchain" className="space-y-4">
-                  <p className="text-gray-600 dark:text-gray-300">
-                    Kết nối ví để mint NFT cho sản phẩm (đang sử dụng mock).
-                  </p>
                   <Button
                     type="submit"
                     className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"

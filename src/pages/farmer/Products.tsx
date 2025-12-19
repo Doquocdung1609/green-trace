@@ -76,8 +76,8 @@ const Products: React.FC = () => {
                       <Link to={`/farmer/edit-product/${product.id}`}>Sửa</Link>
                     </Button>
                     <Button variant="destructive" onClick={() => handleDelete(product.id)}>Xóa</Button>
-                    <Button variant="secondary" onClick={() => window.open(`https://magiceden.io/item-details/${product.blockchainTxId}`, '_blank')}>
-                      Đăng bán trên Magic Eden
+                    <Button variant="secondary" onClick={() => window.open(`https://magiceden.io/`, '_blank')}>
+                      Đăng bán
                     </Button>
                   </TableCell>
                 </motion.tr>

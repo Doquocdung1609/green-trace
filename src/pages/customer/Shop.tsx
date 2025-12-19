@@ -203,40 +203,34 @@ const Shop = () => {
             </h2>
 
             <div className="flex flex-col gap-6">
-              {/* Products nổi bật */}
-              <div className="border-b border-gray-200 dark:border-gray-700 pb-5 space-y-3">
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium uppercase tracking-wide">
-                  Tài sản sinh học cao cấp
-                </p>
-                {featuredProducts.map((fp) => (
-                  <div
-                    key={`p-${fp.id}`}
-                    className="flex items-center gap-3 bg-green-50 dark:bg-gray-700 p-3 rounded-xl hover:bg-green-100 dark:hover:bg-gray-600 transition-all shadow-sm"
-                  >
-                    <img
-                      src={fp.image}
-                      alt={fp.name}
-                      className="w-16 h-16 object-cover rounded-lg"
-                    />
-                    <div className="flex flex-col justify-center flex-1">
-                      <p className="text-sm font-semibold leading-tight">{fp.name}</p>
-                      <p className="text-xs text-green-600 dark:text-green-400">
-                        {fp.price.toLocaleString("vi-VN")} VNĐ/đơn vị
-                      </p>
-                      <a
-                        href={`https://magiceden.io/marketplace/${fp.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-1 text-xs text-blue-600 hover:underline"
-                      >
-                        Tìm hiểu thêm
-                      </a>
-                    </div>
-                  </div>
-                ))}
-
-              </div>
-            </div>
+  <div className="border-b border-gray-200 dark:border-gray-700 pb-5 space-y-3">
+    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium uppercase tracking-wide">
+      Tài sản sinh học cao cấp
+    </p>
+    {featuredProducts.map((fp) => (
+      <Link
+        to={`/product/${fp.id}`}
+        key={`p-${fp.id}`}
+        className="flex items-center gap-3 bg-green-50 dark:bg-gray-700 p-3 rounded-xl hover:bg-green-100 dark:hover:bg-gray-600 transition-all shadow-sm"
+      >
+        <img
+          src={fp.image}
+          alt={fp.name}
+          className="w-16 h-16 object-cover rounded-lg"
+        />
+        <div className="flex flex-col justify-center flex-1">
+          <p className="text-sm font-semibold leading-tight">{fp.name}</p>
+          <p className="text-xs text-green-600 dark:text-green-400">
+            {fp.price.toLocaleString("vi-VN")} VNĐ/đơn vị
+          </p>
+          <span className="mt-1 text-xs text-blue-600 hover:underline">
+            Xem chi tiết
+          </span>
+        </div>
+      </Link>
+    ))}
+  </div>
+</div>
           </div>
         </aside>
 
