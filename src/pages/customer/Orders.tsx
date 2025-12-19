@@ -41,7 +41,7 @@ const Orders = () => {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await fetch("http://localhost:3000/api/orders"); // ← Gọi backend thật
+        const response = await fetch("https://server-x0u1.onrender.com/api/orders"); // ← Gọi backend thật
         if (!response.ok) {
           throw new Error("Không thể tải danh sách đơn hàng");
         }

@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
-      await fetch("http://localhost:3000/api/auth/logout", {
+      await fetch("https://server-x0u1.onrender.com/api/auth/logout", {
         method: "POST",
       });
       localStorage.removeItem("currentUser");

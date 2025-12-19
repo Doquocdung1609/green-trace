@@ -11,19 +11,19 @@ import type { Order, Product } from '../../types/types';
 
 // API functions
 const fetchOrders = async (): Promise<Order[]> => {
-  const response = await fetch('http://localhost:3000/api/orders');
+  const response = await fetch('https://server-x0u1.onrender.com/api/orders');
   if (!response.ok) throw new Error('Lỗi tải đơn hàng');
   return response.json();
 };
 
 const fetchProducts = async (): Promise<Product[]> => {
-  const response = await fetch('http://localhost:3000/api/products');
+  const response = await fetch('https://server-x0u1.onrender.com/api/products');
   if (!response.ok) throw new Error('Lỗi tải sản phẩm');
   return response.json();
 };
 
 const updateOrderStatus = async ({ id, status }: { id: string; status: string }) => {
-  const response = await fetch(`http://localhost:3000/api/orders/${id}`, {
+  const response = await fetch(`https://server-x0u1.onrender.com/api/orders/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status }),

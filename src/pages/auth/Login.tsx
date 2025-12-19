@@ -55,7 +55,7 @@ const Login = () => {
   // Hàm gửi địa chỉ ví lên backend để liên kết với user
   const linkWalletToUser = async (email: string, solanaAddress: string) => {
     try {
-      const response = await fetch("http://localhost:3000/api/wallet/connect", {
+      const response = await fetch("https://server-x0u1.onrender.com/api/wallet/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, solanaAddress }),
@@ -84,7 +84,7 @@ const Login = () => {
 
   const onSubmit = async (data: FormData) => {
     try {
-      const response = await fetch("http://localhost:3000/api/auth/login", {
+      const response = await fetch("https://server-x0u1.onrender.com/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),

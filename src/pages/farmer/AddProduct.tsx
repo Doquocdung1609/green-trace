@@ -732,7 +732,7 @@ const AddProduct = () => {
       } else {
         throw new Error('Hình ảnh sản phẩm không hợp lệ.');
       }
-      let response = await fetch('http://localhost:3000/upload-ipfs', {
+      let response = await fetch('https://server-x0u1.onrender.com/upload-ipfs', {
         method: 'POST',
         body: imageFormData,
       });
@@ -746,7 +746,7 @@ const AddProduct = () => {
           if (cert.file instanceof File) {
             const certFormData = new FormData();
             certFormData.append('file', cert.file);
-            response = await fetch('http://localhost:3000/upload-ipfs', {
+            response = await fetch('https://server-x0u1.onrender.com/upload-ipfs', {
               method: 'POST',
               body: certFormData,
             });
@@ -759,7 +759,7 @@ const AddProduct = () => {
       );
 
       // Step 3: Upload certifications array as JSON to IPFS
-      response = await fetch('http://localhost:3000/upload-json-ipfs', {
+      response = await fetch('https://server-x0u1.onrender.com/upload-json-ipfs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ json: certificationsWithIpfs }),
@@ -769,7 +769,7 @@ const AddProduct = () => {
       const certsUri = `https://gateway.pinata.cloud/ipfs/${certsCid}`;
 
       // Step 4: Upload timeline array as JSON to IPFS
-      response = await fetch('http://localhost:3000/upload-json-ipfs', {
+      response = await fetch('https://server-x0u1.onrender.com/upload-json-ipfs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ json: data.timeline }),
@@ -816,7 +816,7 @@ const AddProduct = () => {
       console.log('Metadata:', JSON.stringify(metadata, null, 2));
 
       // Step 6: Upload metadata JSON to IPFS via backend
-      response = await fetch('http://localhost:3000/upload-json-ipfs', {
+      response = await fetch('https://server-x0u1.onrender.com/upload-json-ipfs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ json: metadata }),

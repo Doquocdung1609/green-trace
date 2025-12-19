@@ -479,13 +479,13 @@ const Checkout = () => {
       for (const item of cart) {
         let response;
         if (item.buyType === "dut") {
-          response = await fetch("http://localhost:3000/api/burn-nft", {
+          response = await fetch("https://server-x0u1.onrender.com/api/burn-nft", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ productId: item.id }),
           });
         } else {
-          response = await fetch("http://localhost:3000/api/transfer-ownership", {
+          response = await fetch("https://server-x0u1.onrender.com/api/transfer-ownership", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ productId: item.id, newOwner: publicKey.toString() }),
