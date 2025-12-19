@@ -22,7 +22,6 @@ export interface Product {
   origin: string;
   farmerName: string;
   productionDate: string;
-  quantity: number;
   timeline: TimelineEntry[];
   certifications: Certification[];
   blockchainTxId: string;
@@ -38,9 +37,18 @@ export interface Product {
     lastUpdated: string; // ISO date
   };
   priceHistory?: { date: string; price: number }[];
+  sold?: boolean;           
+  burnedAt?: string;
 }
 
 
+export interface OrderItem {
+  productId: string;
+  price: number;
+  buyType: 'dut' | 'longterm'; // 'dut' = mua đứt (burn NFT), 'longterm' = mua dài hạn (transfer ownership)
+}
+
+// Cập nhật Order với trạng thái chi tiết hơn và items có buyType
 export interface Order {
   id: string;
   customerName: string;
@@ -48,10 +56,9 @@ export interface Order {
   address: string;
   lat?: number;
   lng?: number;
-  total: number;
-  date: string;
-  status: 'pending' | 'completed' | 'cancelled';
-  items: { productId: string; quantity: number; price: number }[];
+  total: number; // Tổng tiền bằng VND
+  date: string; // ISO string
+  status: 'pending' | 'confirmed' | 'shipping' | 'delivered' | 'cancelled';
+  items: OrderItem[];
 }
-
 

@@ -32,7 +32,7 @@ const Cart = () => {
     });
   };
 
-  const total = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const total = cart.reduce((sum, i) => sum + i.price, 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white dark:from-gray-900 dark:to-gray-800">
@@ -64,7 +64,6 @@ const Cart = () => {
                     <th className="p-4">Sản phẩm</th>
                     <th className="p-4">Loại đầu tư</th>
                     <th className="p-4">Đơn giá</th>
-                    <th className="p-4">Số lượng</th>
                     <th className="p-4">Thành tiền</th>
                     <th className="p-4">Xóa</th>
                   </tr>
@@ -88,11 +87,8 @@ const Cart = () => {
                       <td className="p-4 text-green-700 font-semibold">
                         {item.price.toLocaleString("vi-VN")}đ
                       </td>
-                      <td className="p-4">
-                        <span className="font-semibold">{item.quantity}</span>
-                      </td>
                       <td className="p-4 font-semibold">
-                        {(item.price * item.quantity).toLocaleString("vi-VN")}đ
+                        {(item.price).toLocaleString("vi-VN")}đ
                       </td>
                       <td className="p-4 text-center">
                         <button

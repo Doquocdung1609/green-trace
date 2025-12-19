@@ -49,7 +49,6 @@ const schema = z.object({
   origin: z.string().min(1, 'Xuất xứ là bắt buộc'),
   farmerName: z.string().min(1, 'Tên nông dân là bắt buộc'),
   productionDate: z.string().min(1, 'Ngày sản xuất là bắt buộc'),
-  quantity: z.number().nonnegative('Số lượng phải lớn hơn hoặc bằng 0'),
   certifications: z.array(
     z.object({
       name: z.string().min(1, 'Tên chứng nhận là bắt buộc'),
@@ -153,7 +152,6 @@ const EditProduct = () => {
       origin: '',
       farmerName: '',
       productionDate: '',
-      quantity: 0,
       certifications: [],
       timeline: [],
       roi: 0,
@@ -190,7 +188,6 @@ useEffect(() => {
       origin: product.origin ?? '',
       farmerName: product.farmerName ?? '',
       productionDate: product.productionDate ?? '',
-      quantity: product.quantity ?? 0,
       certifications: product.certifications ?? [],
       timeline: product.timeline ?? [],
       roi: product.roi ?? 0,
@@ -898,24 +895,6 @@ useEffect(() => {
                         <FormLabel>Ngày sản xuất</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="quantity"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Số lượng</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="Nhập số lượng..."
-                            {...field}
-                            onChange={(e) => field.onChange(parseInt(e.target.value))}
-                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

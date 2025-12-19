@@ -11,7 +11,8 @@ import type { Product } from '../../types/types';
 
 const Products: React.FC = () => {
   const queryClient = useQueryClient();
-  const { data: products, isLoading, error } = useQuery<Product[]>({
+  
+  const { data: products = [], isLoading, error } = useQuery<Product[]>({
     queryKey: ['farmerProducts'],
     queryFn: fetchProducts,
   });
@@ -32,6 +33,9 @@ const Products: React.FC = () => {
   if (isLoading) return <p className="p-6 text-center">Đang tải dữ liệu...</p>;
   if (error) return <p className="p-6 text-red-500 text-center">Đã có lỗi xảy ra</p>;
 
+  // LỌC CHỈ HIỂN THỊ NFT CHƯA BÁN (sold !== true)
+  const availableProducts = products.filter(product => !product.sold);
+
   return (
     <DashboardLayout role="farmer">
       <motion.div
@@ -43,48 +47,64 @@ const Products: React.FC = () => {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-primary flex items-center">
             <Leaf className="w-8 h-8 mr-2 text-green-600" />
-            Danh sách NFT
+            Danh sách NFT đang bán
           </h1>
           <Button asChild className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700">
             <Link to="/farmer/add-product">Tạo NFT mới</Link>
           </Button>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-green-200 dark:border-green-700 overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-green-50 dark:bg-gray-700">
-                <TableHead>Tên</TableHead>
-                <TableHead>Giá (SOL)</TableHead>
-                <TableHead>Số lượng</TableHead>
-                <TableHead>Thao tác</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {products?.map((product) => (
-                <motion.tr
-                  key={product.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3 }}
-                  className="hover:bg-green-50 dark:hover:bg-gray-700 transition"
-                >
-                  <TableCell>{product.name}</TableCell>
-                  <TableCell>{product.price.toLocaleString('vi-VN')}</TableCell>
-                  <TableCell>{product.quantity}</TableCell>
-                  <TableCell className="flex gap-2">
-                    <Button asChild variant="outline" className="hover:bg-green-100">
-                      <Link to={`/farmer/edit-product/${product.id}`}>Sửa</Link>
-                    </Button>
-                    <Button variant="destructive" onClick={() => handleDelete(product.id)}>Xóa</Button>
-                    <Button variant="secondary" onClick={() => window.open(`/shop`)}>
-                      Đăng bán
-                    </Button>
-                  </TableCell>
-                </motion.tr>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+
+        {availableProducts.length === 0 ? (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-12 text-center border border-green-200 dark:border-green-700">
+            <Leaf className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+            <p className="text-xl text-gray-500">Chưa có NFT nào đang bán</p>
+            <p className="text-gray-400 mt-2">Tất cả NFT đã được bán hoặc chưa tạo.</p>
+          </div>
+        ) : (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-green-200 dark:border-green-700 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-green-50 dark:bg-gray-700">
+                  <TableHead>Tên sản phẩm</TableHead>
+                  <TableHead>Giá (VNĐ)</TableHead>
+                  <TableHead>Trạng thái</TableHead>
+                  <TableHead>Thao tác</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {availableProducts.map((product) => (
+                  <motion.tr
+                    key={product.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                    className="hover:bg-green-50 dark:hover:bg-gray-700 transition"
+                  >
+                    <TableCell className="font-medium">{product.name}</TableCell>
+                    <TableCell>{product.price.toLocaleString('vi-VN')} ₫</TableCell>
+                    <TableCell>
+                      <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                        Đang bán
+                      </span>
+                    </TableCell>
+                    <TableCell className="flex gap-2">
+                      <Button asChild variant="outline" size="sm" className="hover:bg-green-100">
+                        <Link to={`/farmer/edit-product/${product.id}`}>Sửa</Link>
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        onClick={() => handleDelete(product.id)}
+                      >
+                        Xóa
+                      </Button>
+                    </TableCell>
+                  </motion.tr>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </motion.div>
     </DashboardLayout>
   );

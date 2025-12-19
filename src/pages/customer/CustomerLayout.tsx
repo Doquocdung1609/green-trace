@@ -9,7 +9,6 @@ const CustomerLayout = () => {
   const { logout } = useAuth();
   const location = useLocation();
 
-  // Tính số lượng sản phẩm trong giỏ hàng để hiển thị badge
   const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {

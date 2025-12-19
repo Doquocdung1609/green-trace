@@ -34,14 +34,12 @@ const mockNFTs: NFTItem[] = [
 const InvestorProfile = () => {
   const [nfts, setNFTs] = useState<NFTItem[]>([]);
   const { publicKey, connected } = useWallet();
-  const { user } = useAuth(); // Lấy user để hiển thị tên, role nếu cần
+  const { user } = useAuth();
 
-  // Giả lập lấy danh sách NFT sở hữu từ backend/blockchain
   useEffect(() => {
     setNFTs(mockNFTs);
   }, []);
 
-  // Hàm rút gọn địa chỉ ví (hiển thị 4 ký tự đầu + ... + 4 ký tự cuối)
   const shortenAddress = (address: string) => {
     if (!address) return "";
     return `${address.slice(0, 6)}...${address.slice(-4)}`;

@@ -11,6 +11,7 @@ const DashboardLayout = ({ children, role }: { children: React.ReactNode; role: 
     role === "farmer"
       ? [
           { path: "/farmer/dashboard", label: "Tổng quan" },
+          { path: "/farmer/orders", label: "Đơn hàng" },
           { path: "/farmer/products", label: "Sản phẩm" },
           { path: "/farmer/profile", label: "Hồ sơ" },
         ]

@@ -58,7 +58,6 @@ const schema = z.object({
   origin: z.string().min(1, 'Xuất xứ là bắt buộc'),
   farmerName: z.string().min(1, 'Tên nông dân là bắt buộc'),
   productionDate: z.string().min(1, 'Ngày sản xuất là bắt buộc'),
-  quantity: z.number().nonnegative('Số lượng phải lớn hơn hoặc bằng 0'),
   certifications: z.array(
     z.object({
       name: z.string().min(1, 'Tên chứng nhận là bắt buộc'),
@@ -144,7 +143,6 @@ const AddProduct = () => {
         responsible: '',
         details: '',
       })),
-      quantity: 0,
       roi: 0,
       growthRate: 0,
       age: 0,
@@ -206,7 +204,6 @@ const AddProduct = () => {
           responsible: '',
           details: '',
         })),
-        quantity: 0,
         roi: 0,
         growthRate: 0,
         age: 0,
@@ -794,7 +791,6 @@ const AddProduct = () => {
           { trait_type: 'Age', value: data.age.toString() },
           { trait_type: 'Growth Rate', value: data.growthRate.toString() },
           { trait_type: 'ROI', value: data.roi.toString() },
-          { trait_type: 'Quantity', value: data.quantity.toString() },
           { trait_type: 'Price', value: data.price.toString() },
           { trait_type: 'IoT Status', value: data.iotStatus },
           { trait_type: 'IoT Height', value: data.iotData.height.toString() },
@@ -867,7 +863,6 @@ console.log(`NFT transferred to your wallet: ${wallet.publicKey.toBase58()}`);
         origin: data.origin,
         farmerName: data.farmerName,
         productionDate: data.productionDate,
-        quantity: data.quantity,
         timeline: data.timeline,
         certifications: certificationsWithIpfs,
         growthRate: data.growthRate,
@@ -1043,24 +1038,6 @@ console.log(`NFT transferred to your wallet: ${wallet.publicKey.toBase58()}`);
                         <FormLabel>Ngày sản xuất</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="quantity"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Số lượng (kg)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="Nhập số lượng..."
-                            {...field}
-                            onChange={(e) => field.onChange(parseInt(e.target.value))}
-                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

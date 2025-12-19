@@ -29,15 +29,14 @@ const ProductDetail = () => {
   }, [id]);
 
   const addToCart = () => {
-    if (!product || product.quantity <= 0) return;
+    if (!product) return;
     const cart = JSON.parse(localStorage.getItem("cart") || "[]");
     const existing = cart.find((i: any) => i.id === product.id && i.buyType === buyType);
     if (existing) {
-      // For NFT-like, prevent multiple additions of same item with same type
       setShowNotif(true);
       return;
     } else {
-      cart.push({ ...product, quantity: 1, buyType });
+      cart.push({ ...product, buyType });
     }
     localStorage.setItem("cart", JSON.stringify(cart));
     window.dispatchEvent(new Event("cartUpdated"));

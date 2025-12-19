@@ -37,7 +37,6 @@ let products = [
     age: 6,
     growthRate: 15.2,
     iotStatus: 'Đang theo dõi',
-    quantity: 50,
     timeline: [
       {
         title: 'Gieo trồng',
@@ -97,7 +96,6 @@ let products = [
     age: 1,
     growthRate: 12.5,
     iotStatus: 'Đang theo dõi',
-    quantity: 100,
     timeline: [
       {
         title: 'Gieo trồng',
@@ -156,7 +154,6 @@ let products = [
     age: 12,
     growthRate: 10.8,
     iotStatus: 'Đang theo dõi',
-    quantity: 20,
     timeline: [
       {
         title: 'Gieo trồng',
@@ -216,7 +213,6 @@ let products = [
     age: 1,
     growthRate: 14.0,
     iotStatus: 'Đang theo dõi',
-    quantity: 80,
     timeline: [
       {
         title: 'Gieo trồng',
@@ -275,7 +271,6 @@ let products = [
     age: 20,
     growthRate: 9.5,
     iotStatus: 'Đang theo dõi',
-    quantity: 10,
     timeline: [
       {
         title: 'Gieo trồng',
@@ -334,7 +329,6 @@ let products = [
     age: 6,
     growthRate: 13.8,
     iotStatus: 'Đang theo dõi',
-    quantity: 70,
     timeline: [
       {
         title: 'Gieo trồng',
@@ -393,7 +387,6 @@ let products = [
     age: 30,
     growthRate: 8.7,
     iotStatus: 'Đang theo dõi',
-    quantity: 30,
     timeline: [
       {
         title: 'Gieo trồng',
@@ -452,7 +445,6 @@ let products = [
     age: 4,
     growthRate: 11.3,
     iotStatus: 'Đang theo dõi',
-    quantity: 40,
     timeline: [
       {
         title: 'Gieo trồng',
@@ -512,7 +504,6 @@ let products = [
     age: 50,
     growthRate: 7.9,
     iotStatus: 'Đang theo dõi',
-    quantity: 15,
     timeline: [
       {
         title: 'Gieo trồng',
@@ -619,7 +610,6 @@ function ensureProductFields(product) {
     age: product.age || 0,
     growthRate: product.growthRate || 0,
     iotStatus: product.iotStatus || 'Đang theo dõi',
-    quantity: product.quantity || 0,
     timeline: product.timeline || [],
     certifications: product.certifications || [],
     blockchainTxId: product.blockchainTxId || `tx-${uuidv4()}`,
@@ -876,6 +866,20 @@ app.post('/api/orders', (req, res) => {
   res.status(201).json(newOrder);
 });
 
+app.put('/api/orders/:id', (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  const order = orders.find(o => o.id === id);
+  if (!order) {
+    return res.status(404).json({ error: 'Không tìm thấy đơn hàng' });
+  }
+
+  order.status = status;
+  console.log(`Order ${id} status updated to: ${status}`);
+  res.json(order);
+});
+
 app.post('/api/burn-nft', (req, res) => {
   const { productId } = req.body;
 
@@ -888,11 +892,15 @@ app.post('/api/burn-nft', (req, res) => {
     return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
   }
 
-  // Xóa sản phẩm khỏi danh sách (mô phỏng burn NFT)
-  products.splice(productIndex, 1);
+  product.sold = true;           // Thêm trường sold: true
+  product.owner = null;          // Không còn chủ sở hữu
+  product.burnedAt = new Date().toISOString(); // Optional: thời gian burn
 
-  console.log(`✅ NFT đã được burn: ${productId}`);
-  res.json({ success: true, message: `NFT ${productId} đã được burn thành công` });
+  console.log(`NFT ${productId} đã được burn (mua đứt). Đánh dấu sold = true`);
+  res.json({ 
+    success: true, 
+    message: `NFT đã được burn thành công. Sản phẩm được đánh dấu là đã bán.`,
+  });
 });
 
 // Endpoint mô phỏng chuyển quyền sở hữu NFT (khi mua dài hạn)
@@ -917,6 +925,21 @@ app.post('/api/transfer-ownership', (req, res) => {
     message: `Quyền sở hữu đã chuyển thành công`,
     newOwner: newOwner 
   });
+});
+
+app.post('/api/verify-transaction', async (req, res) => {
+  const { signature } = req.body;
+  try {
+    const connection = new web3.Connection('https://api.devnet.solana.com');
+    const status = await connection.getSignatureStatus(signature);
+    if (status.value?.confirmationStatus === 'confirmed') {
+      res.json({ success: true });
+    } else {
+      res.status(400).json({ error: 'Giao dịch chưa được xác nhận' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Lỗi xác nhận giao dịch' });
+  }
 });
 
 

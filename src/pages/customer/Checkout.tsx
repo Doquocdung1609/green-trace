@@ -19,6 +19,9 @@ import { v4 as uuidv4 } from "uuid";
 import trackasiagl from "trackasia-gl";
 import type { Product, Order } from "../../types/types";
 import { useAuth } from "../../contexts/AuthContext";
+import { useConnection, useWallet } from '@solana/wallet-adapter-react';
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { Transaction, SystemProgram, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
 
 // Define schema
 const schema = z.object({
@@ -52,6 +55,9 @@ const Checkout = () => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<trackasiagl.Map | null>(null);
   const markerRef = useRef<trackasiagl.Marker | null>(null);
+  const { connection } = useConnection();
+  const { publicKey, sendTransaction, connected } = useWallet();
+  const [solPriceVND, setSolPriceVND] = useState<number>(0);
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -129,6 +135,22 @@ const Checkout = () => {
       setProducts(fetchedProducts);
     };
     loadData();
+  }, []);
+
+  useEffect(() => {
+    const fetchSolPrice = async () => {
+      try {
+        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=vnd');
+        const data = await response.json();
+        setSolPriceVND(data.solana.vnd);
+      } catch (error) {
+        setToastMessage("❌ Lỗi lấy tỷ giá SOL. Sử dụng tỷ giá mặc định.");
+        setToastType("error");
+        setToastVisible(true);
+        setSolPriceVND(4000000); // Tỷ giá fallback ~140 USD * 25k VND
+      }
+    };
+    fetchSolPrice();
   }, []);
 
   // Initialize map
@@ -396,6 +418,9 @@ const Checkout = () => {
     [form, handleSearchCoordinates]
   );
 
+  const totalVND = cart.reduce((sum, i) => sum + i.price, 0);
+  const totalSOLString = solPriceVND > 0 ? (totalVND / solPriceVND).toFixed(9) : "0";
+
   // Form submission handler
   const onSubmit = async (data: FormData) => {
     try {
@@ -406,51 +431,74 @@ const Checkout = () => {
         return;
       }
 
-      // Simple stock check (assuming quantity=1)
+      if (!connected || !publicKey) {
+        setToastMessage("❌ Vui lòng kết nối ví Phantom trước khi thanh toán.");
+        setToastType("error");
+        setToastVisible(true);
+        return;
+      }
+
+      // Stock check
       for (const item of cart) {
         const product = products.find((p) => p.id === item.id);
-        if (!product || item.quantity > product.quantity) {
-          setToastMessage(`Sản phẩm ${item.name} chỉ còn ${product?.quantity || 0} trong kho.`);
+        if (!product) {
+          setToastMessage(`Sản phẩm ${item.name} đã bán hết hoặc không đủ số lượng. Vui lòng kiểm tra giỏ hàng.`);
           setToastType("error");
           setToastVisible(true);
           return;
         }
       }
 
-      if (data.payment === "solana") {
-        // Simulate Solana transaction (in real, use @solana/web3.js to sign and send tx)
-        console.log("Simulating Solana payment and ownership transfer/burn...");
-        const newOwner = user.solanaAddress;
+      // Thanh toán SOL thực tế
+      const recipientPubkey = new PublicKey("9YRsWYqWvjnMK176Mm9S4G1MddgJHTEP2Xcmx4Umphqc"); // THAY BẰNG VÍ NHẬN TIỀN CỦA SHOP
 
-        for (const item of cart) {
-          let response;
-          if (item.buyType === "dut") {
-            // Burn NFT for "mua đứt"
-            response = await fetch("http://localhost:3000/api/burn-nft", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ productId: item.id }),
-            });
-          } else {
-            // Transfer ownership for "mua dài hạn"
-            response = await fetch("http://localhost:3000/api/transfer-ownership", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ productId: item.id, newOwner }),
-            });
-          }
+      const lamports = Math.round(parseFloat(totalSOLString) * LAMPORTS_PER_SOL);
 
-          if (!response.ok) {
-            throw new Error(`Failed to process ${item.buyType === "dut" ? "burn" : "transfer"} for ${item.name}`);
-          }
-        }
-
-        setToastMessage("✅ Giao dịch Solana thành công! Quyền sở hữu đã được chuyển/burn.");
-        setToastType("success");
+      if (lamports <= 0) {
+        setToastMessage("❌ Số SOL thanh toán bằng 0. Vui lòng kiểm tra giỏ hàng.");
+        setToastType("error");
         setToastVisible(true);
+        return;
       }
 
-      // Create order
+      const transaction = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: publicKey,
+          toPubkey: recipientPubkey,
+          lamports,
+        })
+      );
+
+      const signature = await sendTransaction(transaction, connection);
+      await connection.confirmTransaction(signature, "confirmed");
+
+      setToastMessage(`✅ Thanh toán SOL thành công!\nSignature: ${signature.substring(0, 20)}...`);
+      setToastType("success");
+      setToastVisible(true);
+
+      // Xử lý NFT sau khi thanh toán thành công
+      for (const item of cart) {
+        let response;
+        if (item.buyType === "dut") {
+          response = await fetch("http://localhost:3000/api/burn-nft", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ productId: item.id }),
+          });
+        } else {
+          response = await fetch("http://localhost:3000/api/transfer-ownership", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ productId: item.id, newOwner: publicKey.toString() }),
+          });
+        }
+
+        if (!response.ok) {
+          throw new Error(`Lỗi xử lý NFT cho sản phẩm ${item.name}`);
+        }
+      }
+
+      // Tạo order
       const order: Order = {
         id: uuidv4(),
         customerName: data.name,
@@ -458,12 +506,11 @@ const Checkout = () => {
         address: data.address,
         lat: data.lat,
         lng: data.lng,
-        total: cart.reduce((sum, i) => sum + i.price * i.quantity, 0),
+        total: totalVND,
         date: new Date().toISOString(),
         status: "pending",
         items: cart.map((item) => ({
           productId: item.id,
-          quantity: item.quantity,
           price: item.price,
           buyType: item.buyType,
         })),
@@ -473,19 +520,22 @@ const Checkout = () => {
       localStorage.removeItem("cart");
       window.dispatchEvent(new Event("cartUpdated"));
       setCart([]);
-      setToastMessage(`✅ Đặt hàng thành công!\nTên: ${data.name}\nSố điện thoại: ${data.phone}\nĐịa chỉ: ${data.address}`);
+
+      setToastMessage(`✅ Đặt hàng thành công!\nTổng: ${totalVND.toLocaleString("vi-VN")}₫ (~${parseFloat(totalSOLString).toFixed(6)} SOL)`);
       setToastType("success");
       setToastVisible(true);
       form.reset();
     } catch (error) {
-      setToastMessage("❌ Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại!");
+      if (error instanceof Error) {
+        setToastMessage(`❌ Lỗi thanh toán: ${error.message}`);
+      } else {
+        setToastMessage("❌ Đã xảy ra lỗi không xác định khi thanh toán.");
+      }
       setToastType("error");
       setToastVisible(true);
+      console.error(error);
     }
   };
-
-  // Calculate total
-  const total = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white dark:from-gray-900 dark:to-gray-800">
@@ -510,13 +560,19 @@ const Checkout = () => {
             <h2 className="text-lg font-semibold mb-2">Giỏ hàng</h2>
             {cart.map((item) => (
               <div key={item.id} className="flex justify-between mb-2">
-                <span>{item.name} (x{item.quantity})</span>
-                <span>{(item.price * item.quantity).toLocaleString("vi-VN")}đ</span>
+                <span>{item.name}</span>
+                <span>
+                  {(item.price).toLocaleString("vi-VN")}₫
+                  {solPriceVND > 0 && ` (~${(item.price / solPriceVND).toFixed(9)} SOL)`}
+                </span>
               </div>
             ))}
             <div className="flex justify-between font-semibold">
               <span>Tổng cộng:</span>
-              <span>{total.toLocaleString("vi-VN")}đ</span>
+              <span>
+                {totalVND.toLocaleString("vi-VN")}₫
+                {solPriceVND > 0 && ` (~${parseFloat(totalSOLString).toFixed(6)} SOL)`}
+              </span>
             </div>
           </div>
         )}
