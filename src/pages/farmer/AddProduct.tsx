@@ -878,7 +878,6 @@ console.log(`NFT transferred to your wallet: ${wallet.publicKey.toBase58()}`);
       };
       add({ newProduct, blockchainTxId: mintAddress });
 
-      // Step 9: Provide MagicEden listing link
       toast({
         title: 'Mint NFT thành công!',
         description: `NFT đã được mint với đầy đủ thuộc tính và dữ liệu. Bạn có thể đăng bán `,

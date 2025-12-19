@@ -134,7 +134,7 @@ const EditProduct = () => {
   const [mapErrors, setMapErrors] = useState<{ [key: number]: string | null }>({});
   const mapRefs = useRef<(trackasiagl.Map | null)[]>([]);
   const markerRefs = useRef<(trackasiagl.Marker | null)[]>([]);
-  const debounceTimers = useRef<{ [key: number]: number | null }>({});
+  const debounceTimers = useRef<{ [key: number]: NodeJS.Timeout | null }>({});
   const observerRefs = useRef<(MutationObserver | null)[]>([]);
   const mapContainerRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -211,12 +211,15 @@ useEffect(() => {
 
   // Debounce utility
   const debounce = (func: (...args: any[]) => void, wait: number) => {
-    let timeout: number;
-    return (...args: any[]) => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func(...args), wait);
-    };
+  let timeout: NodeJS.Timeout | null = null;  // Sửa ở đây
+  return (...args: any[]) => {
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => {
+      timeout = null;
+      func(...args);
+    }, wait);
   };
+};
 
   // Define pulsing dot for each map
   const createPulsingDot = (map: trackasiagl.Map) => {

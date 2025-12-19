@@ -22,12 +22,6 @@ const upload = multer({ dest: 'uploads/' });
 app.use(cors());
 app.use(bodyParser.json());
 
-const wallet = {
-  solanaAddress: 'SoL4nA111FakeWalletAddressXYZ123',
-  balance: 1000,
-};
-
-
 
 // In-memory store
 let products = [
@@ -89,6 +83,7 @@ let products = [
       pH: 6.5,
       lastUpdated: '2025-10-15T10:00:00Z'
     },
+    owner: '9YRsWYqWvjnMK176Mm9S4G1MddgJHTEP2Xcmx4Umphqc',
   },
   {
     id: 'bio2',
@@ -147,6 +142,7 @@ let products = [
       pH: 6.5,
       lastUpdated: '2025-10-15T10:00:00Z'
     },
+    owner: '9YRsWYqWvjnMK176Mm9S4G1MddgJHTEP2Xcmx4Umphqc',
   },
   {
     id: 'bio3',
@@ -206,6 +202,7 @@ let products = [
       pH: 6.5,
       lastUpdated: '2025-10-15T10:00:00Z'
     },
+    owner: '9YRsWYqWvjnMK176Mm9S4G1MddgJHTEP2Xcmx4Umphqc',
   },
   {
     id: 'bio4',
@@ -264,6 +261,7 @@ let products = [
       pH: 6.5,
       lastUpdated: '2025-10-15T10:00:00Z'
     },
+    owner: '9YRsWYqWvjnMK176Mm9S4G1MddgJHTEP2Xcmx4Umphqc',
   },
   {
     id: 'bio5',
@@ -322,6 +320,7 @@ let products = [
       pH: 6.5,
       lastUpdated: '2025-10-15T10:00:00Z'
     },
+    owner: '9YRsWYqWvjnMK176Mm9S4G1MddgJHTEP2Xcmx4Umphqc',
   },
   {
     id: 'bio6',
@@ -380,6 +379,7 @@ let products = [
       pH: 6.5,
       lastUpdated: '2025-10-15T10:00:00Z'
     },
+    owner: '9YRsWYqWvjnMK176Mm9S4G1MddgJHTEP2Xcmx4Umphqc',
   },
   {
     id: 'bio7',
@@ -438,6 +438,7 @@ let products = [
       pH: 6.5,
       lastUpdated: '2025-10-15T10:00:00Z'
     },
+    owner: '9YRsWYqWvjnMK176Mm9S4G1MddgJHTEP2Xcmx4Umphqc',
   },
   {
     id: 'bio8',
@@ -497,6 +498,7 @@ let products = [
       pH: 6.5,
       lastUpdated: '2025-10-15T10:00:00Z'
     },
+    owner: '9YRsWYqWvjnMK176Mm9S4G1MddgJHTEP2Xcmx4Umphqc',
   },
   {
     id: 'bio9',
@@ -555,6 +557,7 @@ let products = [
       pH: 6.5,
       lastUpdated: '2025-10-15T10:00:00Z'
     },
+    owner: '9YRsWYqWvjnMK176Mm9S4G1MddgJHTEP2Xcmx4Umphqc',
   },
 ];
 
@@ -570,7 +573,6 @@ let users = [
     farmName: 'Nông trại Xanh',
     bio: 'Nông dân trồng Sâm Ngọc Linh hơn 10 năm kinh nghiệm',
     kycId: '123456789',
-    solanaAddress: 'SoL4nA111FakeWalletAddressXYZ123',
   },
   {
     email: 'user@gmail.com',
@@ -582,7 +584,6 @@ let users = [
     farmName: '', // Không bắt buộc cho customer
     bio: 'Khách hàng yêu thích sản phẩm nông nghiệp sạch',
     kycId: '987654321',
-    solanaAddress: 'SoL4nA222FakeWalletAddressXYZ456',
   },
 ];
 
@@ -638,15 +639,6 @@ function ensureProductFields(product) {
 // Product Endpoints
 app.get('/api/products', (req, res) => {
   res.json(products);
-});
-
-app.post('/api/products', (req, res) => {
-  const newProduct = req.body;
-  const id = uuidv4();
-  const blockchainTxId = `tx-${uuidv4()}`;
-  const product = ensureProductFields({ ...newProduct, id, blockchainTxId });
-  products.push(product);
-  res.status(201).json(product);
 });
 
 app.put('/api/products/:id', (req, res) => {
@@ -775,6 +767,158 @@ app.post('/upload-json-ipfs', async (req, res) => {
     res.status(500).json({ error: 'Failed to upload JSON to IPFS' });
   }
 });
+
+const getCurrentUser = (email) => users.find(u => u.email === email);
+
+// ==================== CẬP NHẬT ENDPOINTS ====================
+
+// Endpoint để frontend gửi địa chỉ ví sau khi connect Phantom
+app.post('/api/wallet/connect', (req, res) => {
+  const { email, solanaAddress } = req.body;
+
+  if (!email || !solanaAddress) {
+    return res.status(400).json({ error: 'Thiếu email hoặc solanaAddress' });
+  }
+
+  const user = users.find(u => u.email === email);
+  if (!user) {
+    return res.status(404).json({ error: 'Không tìm thấy người dùng' });
+  }
+
+  // Cập nhật địa chỉ ví thực tế từ Phantom
+  user.solanaAddress = solanaAddress;
+
+  res.json({
+    message: 'Kết nối ví thành công',
+    solanaAddress: user.solanaAddress,
+    user: {
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      solanaAddress: user.solanaAddress,
+    }
+  });
+});
+
+app.post('/api/wallet', (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: 'Thiếu email' });
+  }
+
+  const user = users.find(u => u.email === email);
+  if (!user) {
+    return res.status(404).json({ error: 'Không tìm thấy người dùng' });
+  }
+
+  res.json({
+    solanaAddress: user.solanaAddress || null,
+  });
+});
+
+app.post('/api/products', (req, res) => {
+  const { email, ...productData } = req.body; 
+
+  if (!email) {
+    return res.status(400).json({ error: 'Thiếu thông tin người dùng' });
+  }
+
+  const user = users.find(u => u.email === email);
+  if (!user || user.role !== 'farmer') {
+    return res.status(403).json({ error: 'Chỉ farmer mới được tạo sản phẩm' });
+  }
+
+  if (!user.solanaAddress) {
+    return res.status(400).json({ error: 'Vui lòng kết nối ví Phantom trước khi tạo sản phẩm' });
+  }
+
+  const id = uuidv4();
+  const mintAddress = productData.mintAddress || `MINT-${id.substring(0,8)}`;
+  const blockchainTxId = `tx-${uuidv4()}`;
+
+  const product = ensureProductFields({
+    ...productData,
+    id,
+    blockchainTxId,
+    farmerName: user.name,
+    mint: mintAddress,
+    updateAuthority: user.solanaAddress,
+    creators: [
+      {
+        address: user.solanaAddress,
+        verified: 1,
+        share: 100
+      }
+    ],
+    owner: user.solanaAddress  
+  });
+
+  products.push(product);
+  res.status(201).json(product);
+});
+
+let orders = [];
+
+app.get('/api/orders', (req, res) => {
+  res.json(orders);
+});
+
+app.post('/api/orders', (req, res) => {
+  const newOrder = {
+    id: uuidv4(),
+    ...req.body,
+    date: new Date().toISOString(),
+    status: 'pending',
+  };
+  orders.push(newOrder);
+  console.log('New order created:', newOrder);
+  res.status(201).json(newOrder);
+});
+
+app.post('/api/burn-nft', (req, res) => {
+  const { productId } = req.body;
+
+  if (!productId) {
+    return res.status(400).json({ error: 'Thiếu productId' });
+  }
+
+  const productIndex = products.findIndex(p => p.id === productId);
+  if (productIndex === -1) {
+    return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
+  }
+
+  // Xóa sản phẩm khỏi danh sách (mô phỏng burn NFT)
+  products.splice(productIndex, 1);
+
+  console.log(`✅ NFT đã được burn: ${productId}`);
+  res.json({ success: true, message: `NFT ${productId} đã được burn thành công` });
+});
+
+// Endpoint mô phỏng chuyển quyền sở hữu NFT (khi mua dài hạn)
+app.post('/api/transfer-ownership', (req, res) => {
+  const { productId, newOwner } = req.body;
+
+  if (!productId || !newOwner) {
+    return res.status(400).json({ error: 'Thiếu productId hoặc newOwner' });
+  }
+
+  const product = products.find(p => p.id === productId);
+  if (!product) {
+    return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
+  }
+
+  // Cập nhật chủ sở hữu mới (địa chỉ ví của nhà đầu tư)
+  product.owner = newOwner;
+
+  console.log(`✅ Quyền sở hữu NFT ${productId} đã chuyển cho: ${newOwner}`);
+  res.json({ 
+    success: true, 
+    message: `Quyền sở hữu đã chuyển thành công`,
+    newOwner: newOwner 
+  });
+});
+
 
 // Start server
 app.listen(port, () => {

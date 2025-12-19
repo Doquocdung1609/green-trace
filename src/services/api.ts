@@ -1,4 +1,4 @@
-import type { Product } from '../types/types';
+import type { Order, Product } from '../types/types';
 
 // URL của backend
 const API_BASE_URL = 'http://localhost:3000/api';
@@ -107,6 +107,29 @@ export const fetchProductById = async (id: string): Promise<Product | null> => {
     return await response.json();
   } catch (error) {
     console.error('Lỗi trong fetchProductById:', error);
+    throw error;
+  }
+};
+
+
+// Thêm đơn hàng mới
+export const addOrder = async (order: Order): Promise<Order> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(order),
+    });
+
+    if (!response.ok) {
+      throw new Error('Lỗi khi tạo đơn hàng');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Lỗi trong addOrder:', error);
     throw error;
   }
 };

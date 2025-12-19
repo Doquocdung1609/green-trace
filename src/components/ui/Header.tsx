@@ -41,7 +41,6 @@ const Header = () => {
         <nav className="hidden md:flex gap-8 font-medium text-gray-700 dark:text-gray-200">
           {[
             { to: "/", label: "Trang chủ", external: false },
-            { to: "https://magiceden.io", label: "Thị trường", external: true },
             { to: "/about", label: "Giới thiệu", external: false },
             { to: "/contact", label: "Liên hệ", external: false },
           ].map((link) =>

@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "../../components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../../components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import QRViewer from "../../components/ui/QRViewer";
 import Notification from "../../components/ui/ToastNotification";
 import { Cpu, Timer, Activity, Coins, QrCode, ShieldCheck, Leaf, Database, TrendingUp } from "lucide-react";
@@ -15,6 +16,7 @@ const ProductDetail = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [showNotif, setShowNotif] = useState(false);
+  const [buyType, setBuyType] = useState<'dut' | 'daihan'>('daihan');
 
   useEffect(() => {
     const load = async () => {
@@ -29,9 +31,14 @@ const ProductDetail = () => {
   const addToCart = () => {
     if (!product || product.quantity <= 0) return;
     const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-    const existing = cart.find((i: any) => i.id === product.id);
-    if (existing) existing.quantity += 1;
-    else cart.push({ ...product, quantity: 1 });
+    const existing = cart.find((i: any) => i.id === product.id && i.buyType === buyType);
+    if (existing) {
+      // For NFT-like, prevent multiple additions of same item with same type
+      setShowNotif(true);
+      return;
+    } else {
+      cart.push({ ...product, quantity: 1, buyType });
+    }
     localStorage.setItem("cart", JSON.stringify(cart));
     window.dispatchEvent(new Event("cartUpdated"));
     setShowNotif(true);
@@ -73,62 +80,71 @@ const ProductDetail = () => {
 
           {/* Info */}
           <motion.div
-  initial={{ opacity: 0, y: 20 }}
-  animate={{ opacity: 1, y: 0 }}
-  transition={{ duration: 0.5 }}
-  className="space-y-6"
->
-  <h1 className="text-4xl md:text-5xl font-extrabold text-green-800 dark:text-green-200 tracking-tight">
-    {product.name}
-  </h1>
-  <p className="text-lg text-gray-700 dark:text-gray-300">
-    <strong>Xuất xứ:</strong> {product.origin}
-  </p>
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="space-y-6"
+          >
+            <h1 className="text-4xl md:text-5xl font-extrabold text-green-800 dark:text-green-200 tracking-tight">
+              {product.name}
+            </h1>
+            <p className="text-lg text-gray-700 dark:text-gray-300">
+              <strong>Xuất xứ:</strong> {product.origin}
+            </p>
 
-  <div className="grid grid-cols-2 gap-4 text-gray-700 dark:text-gray-300">
-    <div className="flex items-center gap-2">
-      <Timer className="w-5 h-5 text-amber-500" />
-      <span>{product.age} năm tuổi</span>
-    </div>
-    <div className="flex items-center gap-2">
-      <Activity className="w-5 h-5 text-green-500" />
-      <span>Tăng trưởng: {product.growthRate}%</span>
-    </div>
-    <div className="flex items-center gap-2 col-span-2">
-      <Cpu className="w-5 h-5 text-sky-500" />
-      <span>Trạng thái IoT: {product.iotStatus}</span>
-    </div>
-    <div className="col-span-2 bg-green-100 dark:bg-gray-800 p-4 rounded-lg space-y-2">
-      <h4 className="font-semibold text-green-700 dark:text-green-300">
-        Dữ liệu IoT chi tiết (cập nhật gần nhất: {new Date(product.iotData.lastUpdated).toLocaleString('vi-VN')})
-      </h4>
-      <ul className="list-disc pl-5 text-sm">
-        <li>Chiều cao hiện tại: {product.iotData.height} cm</li>
-        <li>Tăng trưởng trung bình/tháng: {product.iotData.growthPerMonth} cm</li>
-        <li>Độ ẩm đất: {product.iotData.humidity}%</li>
-        <li>Nhiệt độ môi trường: {product.iotData.temperature}°C</li>
-        <li>Độ pH: {product.iotData.pH}</li>
-      </ul>
-    </div>
-    <div className="flex items-center gap-2">
-      <Coins className="w-5 h-5 text-yellow-500" />
-      <span>ROI: {product.roi}%</span>
-    </div>
-  </div>
+            <div className="grid grid-cols-2 gap-4 text-gray-700 dark:text-gray-300">
+              <div className="flex items-center gap-2">
+                <Timer className="w-5 h-5 text-amber-500" />
+                <span>{product.age} năm tuổi</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Activity className="w-5 h-5 text-green-500" />
+                <span>Tăng trưởng: {product.growthRate}%</span>
+              </div>
+              <div className="flex items-center gap-2 col-span-2">
+                <Cpu className="w-5 h-5 text-sky-500" />
+                <span>Trạng thái IoT: {product.iotStatus}</span>
+              </div>
+              <div className="col-span-2 bg-green-100 dark:bg-gray-800 p-4 rounded-lg space-y-2">
+                <h4 className="font-semibold text-green-700 dark:text-green-300">
+                  Dữ liệu IoT chi tiết (cập nhật gần nhất: {new Date(product.iotData.lastUpdated).toLocaleString('vi-VN')})
+                </h4>
+                <ul className="list-disc pl-5 text-sm">
+                  <li>Chiều cao hiện tại: {product.iotData.height} cm</li>
+                  <li>Tăng trưởng trung bình/tháng: {product.iotData.growthPerMonth} cm</li>
+                  <li>Độ ẩm đất: {product.iotData.humidity}%</li>
+                  <li>Nhiệt độ môi trường: {product.iotData.temperature}°C</li>
+                  <li>Độ pH: {product.iotData.pH}</li>
+                </ul>
+              </div>
+              <div className="flex items-center gap-2">
+                <Coins className="w-5 h-5 text-yellow-500" />
+                <span>ROI: {product.roi}%</span>
+              </div>
+            </div>
 
-  <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">
-    {product.price.toLocaleString()} VNĐ
-  </p>
+            <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">
+              {product.price.toLocaleString()} VNĐ
+            </p>
 
-  <a
-    href={`https://magiceden.io`}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="inline-block rounded-full bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg font-semibold shadow-md hover:shadow-lg transition-all"
-  >
-    💰 Đầu tư ngay
-  </a>
-</motion.div>
+            <div className="flex items-center gap-4">
+              <Select onValueChange={(value) => setBuyType(value as 'dut' | 'daihan')} defaultValue="daihan">
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Loại đầu tư" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daihan">Mua dài hạn (giữ NFT)</SelectItem>
+                  <SelectItem value="dut">Mua đứt (burn NFT nhận hàng)</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={addToCart}
+                className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg font-semibold shadow-md hover:shadow-lg transition-all"
+              >
+                💰 Thêm vào giỏ
+              </Button>
+            </div>
+          </motion.div>
         </div>
 
         {/* Tabs */}

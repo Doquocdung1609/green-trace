@@ -76,7 +76,7 @@ const Products: React.FC = () => {
                       <Link to={`/farmer/edit-product/${product.id}`}>Sửa</Link>
                     </Button>
                     <Button variant="destructive" onClick={() => handleDelete(product.id)}>Xóa</Button>
-                    <Button variant="secondary" onClick={() => window.open(`https://magiceden.io/`, '_blank')}>
+                    <Button variant="secondary" onClick={() => window.open(`/shop`)}>
                       Đăng bán
                     </Button>
                   </TableCell>

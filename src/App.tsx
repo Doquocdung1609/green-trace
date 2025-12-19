@@ -15,8 +15,9 @@ import FarmerAddProduct from './pages/farmer/AddProduct';
 import FarmerProfile from './pages/farmer/Profile';
 import Shop from './pages/customer/Shop';
 import ProductDetail from './pages/customer/ProductDetail';
-// import Cart from './pages/customer/Cart';
-
+import Cart from './pages/customer/Cart';                 // ← Thêm import
+import Checkout from './pages/customer/Checkout';         // ← Thêm import
+import Orders from './pages/customer/Orders';             // ← Thêm import
 import CustomerProfile from './pages/customer/Profile';
 import { Toaster } from './components/ui/toaster';
 import CustomerLayout from './pages/customer/CustomerLayout';
@@ -51,12 +52,17 @@ function App() {
                 <Route path="/farmer/edit-product/:id" element={<EditProduct />} />
               </Route>
 
-              {/* Customer Routes */}
+              {/* Customer Routes - tất cả đều nằm trong CustomerLayout */}
               <Route element={<ProtectedRoute role="customer" />}>
                 <Route element={<CustomerLayout />}>
                   <Route path="/shop" element={<Shop />} />
                   <Route path="/product/:id" element={<ProductDetail />} />
-                  {/* <Route path="/cart" element={<Cart />} /> */}
+                  
+                  {/* Các route mới cho nhà đầu tư */}
+                  <Route path="/cart" element={<Cart />} />
+                  <Route path="/checkout" element={<Checkout />} />
+                  <Route path="/orders" element={<Orders />} />
+                  
                   <Route path="/profile" element={<CustomerProfile />} />
                 </Route>
               </Route>
