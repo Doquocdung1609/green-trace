@@ -1,4 +1,3 @@
-import React from "react";
 import Header from "../../components/ui/Header";
 import Footer from "../../components/ui/Footer";
 import { Input } from "../../components/ui/input";
