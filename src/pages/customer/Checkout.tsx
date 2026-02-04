@@ -19,8 +19,6 @@ import { v4 as uuidv4 } from "uuid";
 import trackasiagl from "trackasia-gl";
 import type { Product, Order } from "../../types/types";
 import { useAuth } from "../../contexts/AuthContext";
-import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { Transaction, SystemProgram, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
 
 // Define schema
 const schema = z.object({
@@ -54,9 +52,6 @@ const Checkout = () => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<trackasiagl.Map | null>(null);
   const markerRef = useRef<trackasiagl.Marker | null>(null);
-  const { connection } = useConnection();
-  const { publicKey, sendTransaction, connected } = useWallet();
-  const [solPriceVND, setSolPriceVND] = useState<number>(0);
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -134,22 +129,6 @@ const Checkout = () => {
       setProducts(fetchedProducts);
     };
     loadData();
-  }, []);
-
-  useEffect(() => {
-    const fetchSolPrice = async () => {
-      try {
-        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=vnd');
-        const data = await response.json();
-        setSolPriceVND(data.solana.vnd);
-      } catch (error) {
-        setToastMessage("❌ Lỗi lấy tỷ giá SOL. Sử dụng tỷ giá mặc định.");
-        setToastType("error");
-        setToastVisible(true);
-        setSolPriceVND(4000000); // Tỷ giá fallback ~140 USD * 25k VND
-      }
-    };
-    fetchSolPrice();
   }, []);
 
   // Initialize map
@@ -418,20 +397,12 @@ const Checkout = () => {
   );
 
   const totalVND = cart.reduce((sum, i) => sum + i.price, 0);
-  const totalSOLString = solPriceVND > 0 ? (totalVND / solPriceVND).toFixed(9) : "0";
 
   // Form submission handler
   const onSubmit = async (data: FormData) => {
     try {
       if (!user) {
         setToastMessage("❌ Vui lòng đăng nhập để thanh toán.");
-        setToastType("error");
-        setToastVisible(true);
-        return;
-      }
-
-      if (!connected || !publicKey) {
-        setToastMessage("❌ Vui lòng kết nối ví Phantom trước khi thanh toán.");
         setToastType("error");
         setToastVisible(true);
         return;
@@ -448,54 +419,10 @@ const Checkout = () => {
         }
       }
 
-      // Thanh toán SOL thực tế
-      const recipientPubkey = new PublicKey("9YRsWYqWvjnMK176Mm9S4G1MddgJHTEP2Xcmx4Umphqc"); // THAY BẰNG VÍ NHẬN TIỀN CỦA SHOP
-
-      const lamports = Math.round(parseFloat(totalSOLString) * LAMPORTS_PER_SOL);
-
-      if (lamports <= 0) {
-        setToastMessage("❌ Số SOL thanh toán bằng 0. Vui lòng kiểm tra giỏ hàng.");
-        setToastType("error");
-        setToastVisible(true);
-        return;
-      }
-
-      const transaction = new Transaction().add(
-        SystemProgram.transfer({
-          fromPubkey: publicKey,
-          toPubkey: recipientPubkey,
-          lamports,
-        })
-      );
-
-      const signature = await sendTransaction(transaction, connection);
-      await connection.confirmTransaction(signature, "confirmed");
-
-      setToastMessage(`✅ Thanh toán SOL thành công!\nSignature: ${signature.substring(0, 20)}...`);
+      // TODO: Implement Sui payment logic here
+      setToastMessage("✅ Đặt hàng thành công!");
       setToastType("success");
       setToastVisible(true);
-
-      // Xử lý NFT sau khi thanh toán thành công
-      for (const item of cart) {
-        let response;
-        if (item.buyType === "dut") {
-          response = await fetch("https://server-x0u1.onrender.com/api/burn-nft", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ productId: item.id }),
-          });
-        } else {
-          response = await fetch("https://server-x0u1.onrender.com/api/transfer-ownership", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ productId: item.id, newOwner: publicKey.toString() }),
-          });
-        }
-
-        if (!response.ok) {
-          throw new Error(`Lỗi xử lý NFT cho sản phẩm ${item.name}`);
-        }
-      }
 
       // Tạo order
       const order: Order = {
@@ -520,7 +447,7 @@ const Checkout = () => {
       window.dispatchEvent(new Event("cartUpdated"));
       setCart([]);
 
-      setToastMessage(`✅ Đặt hàng thành công!\nTổng: ${totalVND.toLocaleString("vi-VN")}₫ (~${parseFloat(totalSOLString).toFixed(6)} SOL)`);
+      setToastMessage(`✅ Đặt hàng thành công!\nTổng: ${totalVND.toLocaleString("vi-VN")}₫`);
       setToastType("success");
       setToastVisible(true);
       form.reset();
@@ -562,7 +489,6 @@ const Checkout = () => {
                 <span>{item.name}</span>
                 <span>
                   {(item.price).toLocaleString("vi-VN")}₫
-                  {solPriceVND > 0 && ` (~${(item.price / solPriceVND).toFixed(9)} SOL)`}
                 </span>
               </div>
             ))}
@@ -570,7 +496,6 @@ const Checkout = () => {
               <span>Tổng cộng:</span>
               <span>
                 {totalVND.toLocaleString("vi-VN")}₫
-                {solPriceVND > 0 && ` (~${parseFloat(totalSOLString).toFixed(6)} SOL)`}
               </span>
             </div>
           </div>

@@ -133,7 +133,7 @@ const EditProduct = () => {
   const [mapErrors, setMapErrors] = useState<{ [key: number]: string | null }>({});
   const mapRefs = useRef<(trackasiagl.Map | null)[]>([]);
   const markerRefs = useRef<(trackasiagl.Marker | null)[]>([]);
-  const debounceTimers = useRef<{ [key: number]: NodeJS.Timeout | null }>({});
+  const debounceTimers = useRef<{ [key: number]: number | null }>({});
   const observerRefs = useRef<(MutationObserver | null)[]>([]);
   const mapContainerRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -208,7 +208,7 @@ useEffect(() => {
 
   // Debounce utility
   const debounce = (func: (...args: any[]) => void, wait: number) => {
-  let timeout: NodeJS.Timeout | null = null;  // Sửa ở đây
+  let timeout: number | null = null;
   return (...args: any[]) => {
     if (timeout) clearTimeout(timeout);
     timeout = setTimeout(() => {

@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "../../components/ui/button";
-import { useWallet } from "@solana/wallet-adapter-react";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { useAuth } from "../../contexts/AuthContext";
+import { ConnectButton } from "@mysten/dapp-kit";
 import { Wallet } from "lucide-react";
 
 type NFTItem = {
@@ -33,19 +31,10 @@ const mockNFTs: NFTItem[] = [
 
 const InvestorProfile = () => {
   const [nfts, setNFTs] = useState<NFTItem[]>([]);
-  const { publicKey, connected } = useWallet();
-  const { user } = useAuth();
 
   useEffect(() => {
     setNFTs(mockNFTs);
   }, []);
-
-  const shortenAddress = (address: string) => {
-    if (!address) return "";
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
-  };
-
-  const walletAddress = publicKey ? publicKey.toBase58() : null;
 
   return (
     <div className="min-h-screen bg-green-50 dark:bg-gray-900 p-6">
@@ -65,32 +54,12 @@ const InvestorProfile = () => {
             Ví Solana của bạn
           </h2>
 
-          {connected && walletAddress ? (
-            <div className="space-y-4">
-              <div>
-                <p className="text-gray-600 dark:text-gray-400">Địa chỉ ví:</p>
-                <p className="text-lg font-mono bg-gray-100 dark:bg-gray-700 px-4 py-3 rounded-lg break-all mt-2">
-                  {walletAddress}
-                </p>
-                <p className="text-sm text-gray-500 mt-2">
-                  (Rút gọn: <span className="font-mono font-bold">{shortenAddress(walletAddress)}</span>)
-                </p>
-              </div>
-
-              {user && (
-                <p className="text-sm text-green-600 dark:text-green-400">
-                  Đã liên kết với tài khoản: <strong>{user.name}</strong> ({user.role})
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-gray-600 dark:text-gray-400 mb-6">
-                Bạn chưa kết nối ví Phantom. Vui lòng kết nối để xem thông tin đầu tư.
-              </p>
-              <WalletMultiButton className="!bg-gradient-to-r !from-purple-600 !to-pink-600 !hover:from-purple-700 !hover:to-pink-700 !text-white !rounded-full !px-8 !py-3 !text-lg" />
-            </div>
-          )}
+          <div className="text-center py-8">
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Kết nối ví Sui của bạn để xem thông tin đầu tư.
+            </p>
+            <ConnectButton />
+          </div>
         </div>
 
         {/* Phần NFT đang nắm giữ */}

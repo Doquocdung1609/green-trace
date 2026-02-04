@@ -3,10 +3,9 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
 import { Leaf, ArrowLeft, ArrowRight } from "lucide-react";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import ToastNotification from "../../components/ui/ToastNotification";
 import React from "react";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { ConnectButton } from "@mysten/dapp-kit";
 import { useAuth } from "../../contexts/AuthContext";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "../../components/ui/form";
 import { Button } from "../../components/ui/button";
@@ -25,7 +24,7 @@ const schema = z
     farmName: z.string().trim().optional(),
     bio: z.string().trim().optional(),
     kycId: z.string().trim().optional(),
-    solanaAddress: z.string().trim().optional(),
+    suiAddress: z.string().trim().optional(),
   })
   .refine((data) => (data.role === "farmer" ? !!data.farmName : true), {
     message: "Tên trang trại là bắt buộc với vai trò nông dân",
@@ -47,11 +46,10 @@ const Register = () => {
       farmName: "",
       bio: "",
       kycId: "",
-      solanaAddress: "",
+      suiAddress: "",
     },
   });
 
-  const { publicKey } = useWallet();
   const { setUser } = useAuth();
   const [step, setStep] = React.useState(1);
   const [notif, setNotif] = React.useState({
@@ -65,7 +63,7 @@ const Register = () => {
 
   const onSubmit = async (data: FormData) => {
     try {
-      const payload = { ...data, solanaAddress: publicKey?.toBase58() || data.solanaAddress };
+      const payload = { ...data };
       const response = await fetch("https://server-x0u1.onrender.com/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -297,7 +295,7 @@ const Register = () => {
         </Form>
 
         <div className="flex justify-center mt-6">
-          <WalletMultiButton className="w-full justify-center bg-green-600 hover:bg-green-700 text-white rounded-full" />
+          <ConnectButton className="w-full" />
         </div>
 
         <p className="text-center text-sm mt-4 text-gray-500 dark:text-gray-300">

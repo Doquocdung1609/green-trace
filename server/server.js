@@ -686,7 +686,7 @@ app.post('/api/auth/register', async (req, res) => {
     farmName,
     bio,
     kycId,
-    solanaAddress,
+    suiAddress,
   } = req.body;
 
   // Kiểm tra email đã tồn tại
@@ -708,7 +708,7 @@ app.post('/api/auth/register', async (req, res) => {
     farmName: role === 'farmer' ? farmName : '', 
     bio: bio || '',
     kycId: kycId || '',
-    solanaAddress: solanaAddress || '',
+    suiAddress: suiAddress || '',
   };
 
   users.push(newUser);
@@ -762,12 +762,12 @@ const getCurrentUser = (email) => users.find(u => u.email === email);
 
 // ==================== CẬP NHẬT ENDPOINTS ====================
 
-// Endpoint để frontend gửi địa chỉ ví sau khi connect Phantom
+// Endpoint để frontend gửi địa chỉ ví sau khi connect Sui wallet
 app.post('/api/wallet/connect', (req, res) => {
-  const { email, solanaAddress } = req.body;
+  const { email, suiAddress } = req.body;
 
-  if (!email || !solanaAddress) {
-    return res.status(400).json({ error: 'Thiếu email hoặc solanaAddress' });
+  if (!email || !suiAddress) {
+    return res.status(400).json({ error: 'Thiếu email hoặc suiAddress' });
   }
 
   const user = users.find(u => u.email === email);
@@ -775,17 +775,17 @@ app.post('/api/wallet/connect', (req, res) => {
     return res.status(404).json({ error: 'Không tìm thấy người dùng' });
   }
 
-  // Cập nhật địa chỉ ví thực tế từ Phantom
-  user.solanaAddress = solanaAddress;
+  // Cập nhật địa chỉ ví thực tế từ Sui wallet
+  user.suiAddress = suiAddress;
 
   res.json({
     message: 'Kết nối ví thành công',
-    solanaAddress: user.solanaAddress,
+    suiAddress: user.suiAddress,
     user: {
       email: user.email,
       name: user.name,
       role: user.role,
-      solanaAddress: user.solanaAddress,
+      suiAddress: user.suiAddress,
     }
   });
 });
@@ -803,7 +803,7 @@ app.post('/api/wallet', (req, res) => {
   }
 
   res.json({
-    solanaAddress: user.solanaAddress || null,
+    suiAddress: user.suiAddress || null,
   });
 });
 
@@ -819,8 +819,9 @@ app.post('/api/products', (req, res) => {
     return res.status(403).json({ error: 'Chỉ farmer mới được tạo sản phẩm' });
   }
 
-  if (!user.solanaAddress) {
-    return res.status(400).json({ error: 'Vui lòng kết nối ví Phantom trước khi tạo sản phẩm' });
+  if (!user.suiAddress) {
+    // Temporarily comment out for testing
+    // return res.status(400).json({ error: 'Vui lòng kết nối ví Sui trước khi tạo sản phẩm' });
   }
 
   const id = uuidv4();
@@ -833,15 +834,15 @@ app.post('/api/products', (req, res) => {
     blockchainTxId,
     farmerName: user.name,
     mint: mintAddress,
-    updateAuthority: user.solanaAddress,
+    updateAuthority: user.suiAddress,
     creators: [
       {
-        address: user.solanaAddress,
+        address: user.suiAddress,
         verified: 1,
         share: 100
       }
     ],
-    owner: user.solanaAddress  
+    owner: user.suiAddress  
   });
 
   products.push(product);

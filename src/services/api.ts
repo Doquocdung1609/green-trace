@@ -1,7 +1,7 @@
 import type { Order, Product } from '../types/types';
 
 // URL của backend
-const API_BASE_URL = 'https://server-x0u1.onrender.com/api';
+const API_BASE_URL = 'http://localhost:3000/api';
 
 // Lấy danh sách sản phẩm
 export const fetchProducts = async (): Promise<Product[]> => {
@@ -27,10 +27,11 @@ export const fetchProducts = async (): Promise<Product[]> => {
 // Thêm sản phẩm mới
 export const addProduct = async (
   newProduct: Omit<Product, 'id' | 'blockchainTxId'>,
-  blockchainTxId: string
+  blockchainTxId: string,
+  email: string
 ): Promise<Product> => {
   try {
-    const product = { ...newProduct, blockchainTxId };
+    const product = { ...newProduct, blockchainTxId, email };
     const response = await fetch(`${API_BASE_URL}/products`, {
       method: 'POST',
       headers: {

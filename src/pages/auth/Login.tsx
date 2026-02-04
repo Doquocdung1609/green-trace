@@ -12,12 +12,11 @@ import {
   FormLabel,
   FormMessage,
 } from "../../components/ui/form";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { motion } from "framer-motion";
-import { Leaf, Wallet } from "lucide-react";
+import { Leaf } from "lucide-react";
 import ToastNotification from "../../components/ui/ToastNotification";
 import { useAuth } from "../../contexts/AuthContext";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { ConnectButton } from "@mysten/dapp-kit";
 
 const schema = z.object({
   email: z
@@ -44,43 +43,12 @@ const Login = () => {
   });
 
   const { setUser } = useAuth();
-  const { publicKey, connected } = useWallet(); // Lấy trạng thái ví Phantom
 
   const [notif, setNotif] = React.useState({
     visible: false,
     message: "",
     type: "info" as "success" | "error" | "info",
   });
-
-  // Hàm gửi địa chỉ ví lên backend để liên kết với user
-  const linkWalletToUser = async (email: string, solanaAddress: string) => {
-    try {
-      const response = await fetch("https://server-x0u1.onrender.com/api/wallet/connect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, solanaAddress }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        // Cập nhật lại user trong context với solanaAddress mới
-        setUser((prev: any) => ({ ...prev, solanaAddress: data.solanaAddress }));
-
-        setNotif({
-          visible: true,
-          message: "Ví Phantom đã được liên kết thành công!",
-          type: "success",
-        });
-      }
-    } catch (err) {
-      console.error("Lỗi khi liên kết ví:", err);
-      setNotif({
-        visible: true,
-        message: "Không thể liên kết ví, vui lòng thử lại.",
-        type: "error",
-      });
-    }
-  };
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -106,12 +74,6 @@ const Login = () => {
         type: "success",
       });
 
-      // Nếu ví Phantom đã connect → tự động liên kết luôn
-      if (connected && publicKey) {
-        const solanaAddress = publicKey.toBase58();
-        await linkWalletToUser(user.email, solanaAddress);
-      }
-
       // Chuyển hướng sau một chút delay để người dùng thấy toast
       setTimeout(() => {
         window.location.href = user.role === "farmer" ? "/farmer/dashboard" : "/shop";
@@ -120,28 +82,6 @@ const Login = () => {
       setNotif({ visible: true, message: error.message || "Đã có lỗi xảy ra", type: "error" });
     }
   };
-
-  // Theo dõi khi ví connect (người dùng bấm Connect trên WalletMultiButton)
-  React.useEffect(() => {
-    if (connected && publicKey) {
-      const currentUser = localStorage.getItem("currentUser");
-      if (currentUser) {
-        const user = JSON.parse(currentUser);
-        const solanaAddress = publicKey.toBase58();
-
-        // Nếu ví connect sau khi đã login → tự động liên kết
-        linkWalletToUser(user.email, solanaAddress);
-      } else {
-        // Nếu chưa login mà connect ví → chỉ hiển thị thông báo nhẹ (tùy chọn)
-        setNotif({
-          visible: true,
-          message: "Ví đã kết nối! Vui lòng đăng nhập để liên kết tài khoản.",
-          type: "info",
-        });
-        setTimeout(() => setNotif((prev) => ({ ...prev, visible: false })), 3000);
-      }
-    }
-  }, [connected, publicKey]);
 
   return (
     <div className="flex items-center justify-center h-screen bg-gradient-to-br from-green-100 to-green-50 dark:from-gray-900 dark:to-gray-800">
@@ -210,12 +150,7 @@ const Login = () => {
         </div>
 
         <div className="space-y-3">
-          <WalletMultiButton
-            className="!w-full !justify-center !bg-gradient-to-r !from-purple-600 !to-pink-600 !hover:from-purple-700 !hover:to-pink-700 !text-white !rounded-full !font-medium !flex !items-center !gap-2"
-          >
-            <Wallet className="w-5 h-5" />
-            {connected ? "Ví đã kết nối" : "Kết nối ví Phantom"}
-          </WalletMultiButton>
+          <ConnectButton className="!w-full" />
         </div>
 
         <p className="text-center text-sm text-gray-500 dark:text-gray-300">

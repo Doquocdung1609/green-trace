@@ -23,7 +23,7 @@ import {
   CardTitle,
 } from '../../components/ui/card';
 
-const PACKAGE_ID = '0x3f95f8bd910fa2ad84f207031a0037cb2d45ebcd37b76d6f46ddc98bb7b2f0bb';
+const PACKAGE_ID = '0x18c4900231904503471f9a056057d9f8369924d4174cf62986368ac8f7e1e0e1';
 // Old package IDs for backward compatibility
 const OLD_PACKAGE_IDS = [
   '0x8a695bb68afa0818ae84745e37be08efd3afa8bc8afa8173760be2d11fb5f2ab',
@@ -278,10 +278,6 @@ const UpdateNFT = () => {
     }
   };
 
-  const stringToUint8Array = (str: string) => {
-    return Array.from(new TextEncoder().encode(str));
-  };
-
   const updateIotData = async () => {
     if (connectionStatus !== 'connected' || !nftData) return;
 
@@ -293,13 +289,13 @@ const UpdateNFT = () => {
         target: `${PACKAGE_ID}::product_nft_v2::update_iot_data`,
         arguments: [
           txb.object(nftData.id),
-          txb.pure(new Uint8Array(stringToUint8Array(iotStatus))),
+          txb.pure.string(iotStatus),
           txb.pure.u64(BigInt(iotHeight)),
           txb.pure.u64(BigInt(iotGrowthPerMonth)),
           txb.pure.u64(BigInt(iotHumidity)),
           txb.pure.u64(BigInt(iotTemperature)),
-          txb.pure.u64(BigInt(Math.floor(iotPh * 100))), // Convert to integer
-          txb.pure(new Uint8Array(stringToUint8Array(new Date().toISOString()))),
+          txb.pure.u64(BigInt(Math.floor(iotPh * 100))),
+          txb.pure.string(new Date().toISOString()),
         ],
       });
 
@@ -395,7 +391,7 @@ const UpdateNFT = () => {
         target: `${PACKAGE_ID}::product_nft_v2::update_description`,
         arguments: [
           txb.object(nftData.id),
-          txb.pure(new Uint8Array(stringToUint8Array(description))),
+          txb.pure.string(description),
         ],
       });
 

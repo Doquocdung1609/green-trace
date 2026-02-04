@@ -4,7 +4,7 @@ import { Transaction } from '@mysten/sui/transactions';
 import { SuiWalletButton } from '../../components/SuiWalletButton';
 
 // Package ID sau khi publish Move contract
-const PACKAGE_ID = '0x482396463dd8ae76e6fa9abebeb2242653b3be2e41234e0ac085d4e7ae898290';
+const PACKAGE_ID = '0x18c4900231904503471f9a056057d9f8369924d4174cf62986368ac8f7e1e0e1';
 
 export default function SuiTest() {
   const currentAccount = useCurrentAccount();

@@ -34,9 +34,10 @@ import { motion } from 'framer-motion';
 import { Leaf, Plus, Trash2 } from 'lucide-react';
 import { toast } from '../../hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '../../contexts/AuthContext';
 import type { Product, Certification } from '../../types/types';
 
-const PACKAGE_ID = '0x3f95f8bd910fa2ad84f207031a0037cb2d45ebcd37b76d6f46ddc98bb7b2f0bb';
+const PACKAGE_ID = '0x18c4900231904503471f9a056057d9f8369924d4174cf62986368ac8f7e1e0e1';
 
 const timelineDefaults = [
   { title: 'Trồng trọt', desc: 'Bắt đầu gieo trồng sản phẩm.' },
@@ -96,6 +97,12 @@ const AddProductSui = () => {
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
+      name: '',
+      description: '',
+      price: 0,
+      origin: '',
+      farmerName: '',
+      productionDate: '',
       certifications: [],
       timeline: timelineDefaults.map(({ title, desc }) => ({
         title,
@@ -109,7 +116,7 @@ const AddProductSui = () => {
       roi: 0,
       growthRate: 0,
       age: 0,
-      iotStatus: 'Đang theo dõi',
+      iotStatus: 'Đang theo dõi' as const,
       iotData: {
         height: 0,
         growthPerMonth: 0,
@@ -140,10 +147,11 @@ const AddProductSui = () => {
   const { connectionStatus } = useCurrentWallet();
   const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { mutate: add } = useMutation({
     mutationFn: async ({ newProduct, blockchainTxId }: { newProduct: Omit<Product, 'id' | 'blockchainTxId'>; blockchainTxId: string }) => {
-      return addProduct(newProduct, blockchainTxId);
+      return addProduct(newProduct, blockchainTxId, user?.email || '');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['farmerProducts'] });
@@ -256,45 +264,48 @@ const AddProductSui = () => {
       // Step 5: Mint NFT on Sui blockchain
       const txb = new Transaction();
       
-      // Helper function to convert string to Uint8Array
-      const stringToUint8Array = (str: string) => {
-        return new TextEncoder().encode(str);
-      };
-
       const tempTxId = `sui-temp-${Date.now()}`;
 
       txb.moveCall({
-        target: `${PACKAGE_ID}::product_nft_v2::mint_product_nft`,
+        target: `${PACKAGE_ID}::advanced_product_nft::mint_product_nft`,
         arguments: [
+          // Registry (shared object)
+          txb.object('0xc2ebceb5f68416005a128ac55e4a60a0b62a9cf287639ea8f135ff186c439ea0'),
+          
           // Basic info
-          txb.pure(stringToUint8Array(data.name)),
-          txb.pure(stringToUint8Array(data.description)),
-          txb.pure(stringToUint8Array(imageUri)),
-          txb.pure(stringToUint8Array(data.origin)),
-          txb.pure(stringToUint8Array(data.farmerName)),
-          txb.pure(stringToUint8Array(data.productionDate)),
+          txb.pure.string(data.name),
+          txb.pure.string(data.description),
+          txb.pure.string(imageUri),
+          txb.pure.string(data.origin),
+          txb.pure.string(data.farmerName),
+          txb.pure.string(data.productionDate),
+          
+          // Economic params
           txb.pure.u64(BigInt(data.age)),
-          txb.pure.u64(BigInt(Math.floor(data.price * 1000000))), // Convert to micro units
-          txb.pure.u64(BigInt(data.quantity)),
+          txb.pure.u64(BigInt(Math.floor(data.price * 1000000))), // base_price
           txb.pure.u64(BigInt(data.roi)),
           txb.pure.u64(BigInt(data.growthRate)),
+          txb.pure.u64(BigInt(1000000)), // monthly_maintenance_fee (default 1 SUI)
+          
+          // Transfer type (0: Direct)
+          txb.pure.u8(0),
           
           // IoT data
-          txb.pure(stringToUint8Array(data.iotStatus)),
+          txb.pure.string(data.iotStatus),
           txb.pure.u64(BigInt(data.iotData.height)),
-          txb.pure.u64(BigInt(data.iotData.growthPerMonth)),
           txb.pure.u64(BigInt(data.iotData.humidity)),
           txb.pure.u64(BigInt(data.iotData.temperature)),
-          txb.pure.u64(BigInt(Math.floor(data.iotData.pH * 100))), // Store pH as integer (pH * 100)
-          txb.pure(stringToUint8Array(data.iotData.lastUpdated)),
           
           // URIs
-          txb.pure(stringToUint8Array(certsUri)),
-          txb.pure(stringToUint8Array(timelineUri)),
-          txb.pure(stringToUint8Array(tempTxId)),
+          txb.pure.string(certsUri),
+          txb.pure.string(timelineUri),
+          txb.pure.string(tempTxId), // metadata_uri
           
           // Recipient
           txb.pure.address(currentAccount.address),
+          
+          // Clock
+          txb.object('0x6'),
         ],
       });
 
@@ -317,7 +328,6 @@ const AddProductSui = () => {
                 origin: data.origin,
                 farmerName: data.farmerName,
                 productionDate: data.productionDate,
-                quantity: data.quantity,
                 timeline: data.timeline,
                 certifications: certificationsWithIpfs,
                 growthRate: data.growthRate,
