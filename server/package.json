@@ -18,13 +18,17 @@
     "@metaplex-foundation/umi-program-repository": "^1.4.1",
     "@metaplex-foundation/umi-signer-wallet-adapters": "^1.4.1",
     "@metaplex-foundation/umi-uploader-irys": "^1.4.1",
+    "@mysten/sui": "^1.45.2",
     "@pinata/sdk": "^2.1.0",
+    "@scure/base": "^2.0.0",
     "@solana/web3.js": "^1.98.4",
+    "axios": "^1.13.4",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "multer": "^2.0.2",
+    "node-fetch": "^3.3.2",
     "prompts": "^2.4.2",
     "punycode": "^2.3.1"
   }

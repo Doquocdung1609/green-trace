@@ -1,11 +1,15 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { LogOut, Leaf } from "lucide-react";
+import { LogOut, Leaf, Wallet } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { useAuth } from "../contexts/AuthContext";
+import { ConnectButton, useCurrentAccount, useCurrentWallet, useDisconnectWallet } from '@mysten/dapp-kit';
 
 const DashboardLayout = ({ children, role }: { children: React.ReactNode; role: string }) => {
   const { logout } = useAuth(); // Lấy hàm logout từ AuthContext
+  const currentAccount = useCurrentAccount();
+  const { connectionStatus } = useCurrentWallet();
+  const { mutate: disconnect } = useDisconnectWallet();
 
   const links =
     role === "farmer"
@@ -37,13 +41,47 @@ const DashboardLayout = ({ children, role }: { children: React.ReactNode; role: 
             ))}
           </nav>
         </div>
+        
+        {/* Wallet Section */}
+        <div className="space-y-2">
+          {connectionStatus === 'connected' ? (
+            <div className="bg-green-800/50 rounded-lg p-3 border border-green-600">
+              <div className="flex items-center gap-2 mb-2">
+                <Wallet className="w-4 h-4 text-green-300" />
+                <p className="text-xs text-green-300">Ví Sui</p>
+              </div>
+              <p className="text-xs font-mono text-white mb-3">
+                {currentAccount?.address 
+                  ? `${currentAccount.address.slice(0, 6)}...${currentAccount.address.slice(-4)}`
+                  : ''}
+              </p>
+              <Button
+                onClick={() => disconnect()}
+                variant="outline"
+                size="sm"
+                className="w-full text-xs bg-red-500/20 border-red-400 text-red-200 hover:bg-red-500/30"
+              >
+                Đăng xuất ví
+              </Button>
+            </div>
+          ) : (
+            <div className="bg-green-800/50 rounded-lg p-3 border border-green-600">
+              <div className="flex items-center gap-2 mb-2">
+                <Wallet className="w-4 h-4 text-green-300" />
+                <p className="text-xs text-green-300">Ví Sui</p>
+              </div>
+              <ConnectButton className="w-full text-xs" />
+            </div>
+          )}
+        
         <Button
           onClick={logout} // Sử dụng logout từ AuthContext
           variant="destructive"
-          className="flex items-center gap-2 bg-red-500 hover:bg-red-600"
+          className="flex items-center gap-2 bg-red-500 hover:bg-red-600 w-full"
         >
           <LogOut /> Đăng xuất
         </Button>
+        </div>
       </aside>
       <main className="flex-1 p-8 overflow-auto">{children}</main>
     </div>

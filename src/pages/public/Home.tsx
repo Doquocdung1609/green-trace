@@ -43,7 +43,7 @@ const Home = () => {
             GreenTrace 2.0 🌱
           </motion.h1>
           <p className="text-lg md:text-xl font-medium mb-8">
-            Tokenized Sustainable Assets – Đầu tư sinh học minh bạch, tăng trưởng bằng IoT & Blockchain Solana
+            Tokenized Sustainable Assets – Đầu tư sinh học minh bạch, tăng trưởng bằng IoT & Blockchain Sui
           </p>
           <motion.a
             href="/farmer/add-product"
@@ -67,7 +67,7 @@ const Home = () => {
             {
               icon: <Coins className="w-12 h-12 mx-auto text-green-600 mb-4" />,
               title: 'NFT Ownership',
-              desc: 'Tài sản được mã hóa thành NFT – đảm bảo quyền sở hữu minh bạch và giao dịch được trên Solana/Magic Eden.',
+              desc: 'Tài sản được mã hóa thành NFT – đảm bảo quyền sở hữu minh bạch và giao dịch được trên Sui blockchain.',
             },
             {
               icon: <Cpu className="w-12 h-12 mx-auto text-green-600 mb-4" />,
@@ -122,7 +122,7 @@ const Home = () => {
       >
         <h3 className="text-2xl font-semibold mb-4">Bắt đầu hành trình với GreenTrace 🌳</h3>
         <p className="mb-6 text-gray-700 dark:text-gray-300">
-          Farmer tạo NFT BioAsset, nhà đầu tư theo dõi tài sản trên Solana/Magic Eden.
+          Farmer tạo NFT BioAsset, nhà đầu tư theo dõi tài sản trên Sui blockchain.
         </p>
         <div className="flex justify-center gap-4 flex-wrap">
           <a

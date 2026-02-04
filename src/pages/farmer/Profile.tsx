@@ -1,10 +1,8 @@
 import { useState } from 'react';
-import DashboardLayout from '../../layouts/DashboardLayout';
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useWallet } from '@solana/wallet-adapter-react';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import * as z from 'zod';
+import { useCurrentAccount } from '@mysten/dapp-kit';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../../components/ui/form';
 import { Input } from '../../components/ui/input';
@@ -13,6 +11,7 @@ import { Textarea } from '../../components/ui/textarea';
 import { motion } from 'framer-motion';
 import { User } from 'lucide-react';
 import ToastNotification from '../../components/ui/ToastNotification';
+import DashboardLayout from '../../layouts/DashboardLayout';
 
 const schema = z.object({
   fullName: z.string().min(3, 'Họ tên phải có ít nhất 3 ký tự'),
@@ -20,13 +19,21 @@ const schema = z.object({
   address: z.string().min(5, 'Địa chỉ không hợp lệ'),
   farmName: z.string().min(2, 'Tên trang trại không hợp lệ'),
   bio: z.string().optional(),
-  solanaAddress: z.string().optional(),
+  suiAddress: z.string().optional(),
   kycId: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
 
 const Profile = () => {
+  const [toast, setToast] = useState({
+    visible: false,
+    message: '',
+    type: 'info' as 'success' | 'error' | 'info',
+  });
+
+  const currentAccount = useCurrentAccount();
+
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -35,24 +42,16 @@ const Profile = () => {
       address: '',
       farmName: '',
       bio: '',
-      solanaAddress: '',
+      suiAddress: '',
       kycId: '',
     },
-  });
-
-  const { publicKey, connected } = useWallet();
-
-  const [toast, setToast] = useState({
-    visible: false,
-    message: '',
-    type: 'info' as 'success' | 'error' | 'info',
   });
 
   const onSubmit = async (data: FormData) => {
     try {
       const profileData = {
         ...data,
-        solanaAddress: publicKey?.toBase58() || data.solanaAddress,
+        suiAddress: currentAccount?.address || data.suiAddress,
       };
 
       console.log('Dữ liệu profile:', profileData);
@@ -97,7 +96,7 @@ const Profile = () => {
           <TabsList className="mb-6">
             <TabsTrigger value="info">Thông tin cá nhân</TabsTrigger>
             <TabsTrigger value="kyc">Xác minh KYC</TabsTrigger>
-            <TabsTrigger value="wallet">Ví Solana</TabsTrigger>
+            <TabsTrigger value="wallet">Ví Sui</TabsTrigger>
           </TabsList>
 
           <Form {...form}>
@@ -157,19 +156,20 @@ const Profile = () => {
                 </p>
               </TabsContent>
 
-              <TabsContent value="wallet" className="space-y-4 text-center">
-                <WalletMultiButton className="w-full justify-center" />
-                {connected ? (
-                  <div className="mt-4 p-4 bg-green-50 dark:bg-gray-700 rounded-lg border border-green-200 dark:border-green-600">
-                    <p className="text-sm text-green-700 dark:text-green-300">
-                      Ví đã kết nối: <br />
-                      <span className="font-mono text-xs break-all">{publicKey?.toBase58()}</span>
+              <TabsContent value="wallet" className="space-y-4">
+                {!currentAccount ? (
+                  <div className="text-center">
+                    <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
+                      Kết nối ví Sui để mint NFT và quản lý sản phẩm.
                     </p>
                   </div>
                 ) : (
-                  <p className="text-gray-600 dark:text-gray-300 text-sm">
-                    Kết nối ví Solana để mint NFT.
-                  </p>
+                  <div className="p-4 bg-green-50 dark:bg-gray-700 rounded-lg border border-green-200 dark:border-green-600">
+                    <p className="text-sm text-green-700 dark:text-green-300">
+                      Ví đã kết nối: <br />
+                      <span className="font-mono text-xs break-all">{currentAccount?.address}</span>
+                    </p>
+                  </div>
                 )}
               </TabsContent>
 

@@ -14,7 +14,7 @@ const About = () => (
         Về GreenTrace 🌿
       </motion.h1>
       <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed mb-10">
-        GreenTrace là nền tảng minh bạch hóa chuỗi cung ứng nông sản bằng công nghệ Solana Blockchain. 
+        GreenTrace là nền tảng minh bạch hóa chuỗi cung ứng nông sản bằng công nghệ Sui Blockchain. 
         Chúng tôi giúp người tiêu dùng hiểu rõ nguồn gốc sản phẩm và hỗ trợ nông dân xây dựng thương hiệu bền vững.
       </p>
 

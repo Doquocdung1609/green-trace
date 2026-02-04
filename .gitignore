@@ -413,3 +413,24 @@ node_modules
 dist
 dist-ssr
 *.local
+
+# Sui wallet files (sensitive - contains private keys)
+server/marketplace-escrow-wallet.json
+server/convert-key.js
+
+# NFT marketplace data (can be regenerated)
+server/nft-listings.json
+server/nft-purchases.json
+
+# Server uploads
+server/uploads/*
+!server/uploads/.gitkeep
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+.vite
+.tmp
