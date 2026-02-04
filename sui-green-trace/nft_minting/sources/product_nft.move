@@ -1,4 +1,4 @@
-#[allow(duplicate_alias, unused_use)]
+#[allow(duplicate_alias, unused_use, lint(public_entry))]
 module nft_minting::product_nft {
     use sui::object;
     use sui::transfer;

@@ -1,5 +1,5 @@
 /// Advanced Product NFT with Kiosk, Publisher, Escrow, Evolution, and Maintenance
-#[allow(duplicate_alias)]
+#[allow(duplicate_alias, lint(public_entry))]
 module nft_minting::advanced_product_nft {
     use sui::object::UID;
     use sui::transfer;
