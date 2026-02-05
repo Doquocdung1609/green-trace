@@ -48,7 +48,7 @@ const schema = z.object({
   ),
   origin: z.string().min(1, 'Xuất xứ là bắt buộc'),
   farmerName: z.string().min(1, 'Tên nông dân là bắt buộc'),
-  productionDate: z.string().min(1, 'Ngày sản xuất là bắt buộc'),
+  productionDate: z.string().min(1, 'Ngày gieo trồng là bắt buộc'),
   certifications: z.array(
     z.object({
       name: z.string().min(1, 'Tên chứng nhận là bắt buộc'),
@@ -892,7 +892,7 @@ useEffect(() => {
                     name="productionDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Ngày sản xuất</FormLabel>
+                        <FormLabel>Ngày gieo trồng</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} />
                         </FormControl>

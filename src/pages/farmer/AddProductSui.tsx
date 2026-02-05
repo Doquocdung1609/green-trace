@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
@@ -36,16 +36,16 @@ import { toast } from '../../hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import type { Product, Certification } from '../../types/types';
+import trackasiagl from 'trackasia-gl';
 
 const PACKAGE_ID = '0x18c4900231904503471f9a056057d9f8369924d4174cf62986368ac8f7e1e0e1';
 
 const timelineDefaults = [
   { title: 'Trồng trọt', desc: 'Bắt đầu gieo trồng sản phẩm.' },
-  { title: 'Thu hoạch', desc: 'Thu hoạch sản phẩm từ nông trại.' },
-  { title: 'Vận chuyển', desc: 'Vận chuyển sản phẩm đến cơ sở chế biến hoặc kho.' },
+  { title: 'Chăm sóc', desc: 'Chăm sóc và bảo vệ sản phẩm trong quá trình phát triển.' },
+  { title: 'Bón phân', desc: 'Bón phân cho cây trồng.' },
   { title: 'Kiểm định', desc: 'Kiểm tra chất lượng và an toàn sản phẩm.' },
-  { title: 'Phân phối', desc: 'Phân phối sản phẩm đến các điểm bán.' },
-  { title: 'Bàn ăn', desc: 'Sản phẩm sẵn sàng cho người tiêu dùng.' },
+
 ];
 
 const schema = z.object({
@@ -57,7 +57,7 @@ const schema = z.object({
   }),
   origin: z.string().min(1, 'Xuất xứ là bắt buộc'),
   farmerName: z.string().min(1, 'Tên nông dân là bắt buộc'),
-  productionDate: z.string().min(1, 'Ngày sản xuất là bắt buộc'),
+  productionDate: z.string().min(1, 'Ngày gieo trồng là bắt buộc'),
   quantity: z.number().nonnegative('Số lượng phải lớn hơn hoặc bằng 0'),
   certifications: z.array(
     z.object({
@@ -68,13 +68,15 @@ const schema = z.object({
     })
   ).optional(),
   timeline: z.array(
-    z.object({
-      title: z.string().min(1, 'Tiêu đề là bắt buộc'),
-      desc: z.string().min(1, 'Mô tả là bắt buộc'),
-      date: z.string().min(1, 'Ngày là bắt buộc'),
-      location: z.string().min(1, 'Địa điểm là bắt buộc'),
-      responsible: z.string().min(1, 'Người phụ trách là bắt buộc'),
-      details: z.string().optional(),
+  z.object({
+    title: z.string().min(1, 'Tiêu đề là bắt buộc'),
+    desc: z.string().min(1, 'Mô tả là bắt buộc'),
+    date: z.string().min(1, 'Ngày là bắt buộc'),
+    location: z.string().min(1, 'Địa điểm là bắt buộc'),
+    lat: z.number().optional(),
+    lng: z.number().optional(),
+    responsible: z.string().min(1, 'Người phụ trách là bắt buộc'),
+    details: z.string().optional(),
     })
   ).min(1, 'Phải có ít nhất một mốc thời gian'),
   roi: z.number().nonnegative('ROI phải lớn hơn hoặc bằng 0'),
@@ -93,6 +95,8 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+const TRACK_ASIA_ACCESS_TOKEN = import.meta.env.VITE_TRACK_ASIA_ACCESS_TOKEN || 'e7e09d5a3e76bc8e71760189816caff185';
+
 const AddProductSui = () => {
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -109,6 +113,8 @@ const AddProductSui = () => {
         desc,
         date: '',
         location: '',
+        lat: undefined,
+        lng: undefined,
         responsible: '',
         details: '',
       })),
@@ -143,11 +149,252 @@ const AddProductSui = () => {
   const [certificationPreviews, setCertificationPreviews] = useState<{ [key: number]: string | null }>({});
   const [isLoading, setIsLoading] = useState(false);
 
+  const mapRefs = useRef<(trackasiagl.Map | null)[]>([]);
+  const markerRefs = useRef<(trackasiagl.Marker | null)[]>([]);
+  const mapContainerRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [mapErrors, setMapErrors] = useState<{ [key: number]: string | null }>({});
+  const [addressSuggestions, setAddressSuggestions] = useState<{ [key: number]: any[] }>({});
+  const [showSuggestions, setShowSuggestions] = useState<{ [key: number]: boolean }>({});
+  const [isSearching, setIsSearching] = useState<{ [key: number]: boolean }>({});
+
   const currentAccount = useCurrentAccount();
   const { connectionStatus } = useCurrentWallet();
   const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+
+  const debounce = (func: (...args: any[]) => void, wait: number) => {
+  let timeout: ReturnType<typeof setTimeout> | null = null;    return (...args: any[]) => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), wait);
+    };
+  };
+
+  const createPulsingDot = (map: trackasiagl.Map) => {
+    const size = 200;
+    return {
+      width: size,
+      height: size,
+      data: new Uint8Array(size * size * 4),
+      context: null as CanvasRenderingContext2D | null,
+      onAdd: function () {
+        const canvas = document.createElement('canvas');
+        canvas.width = this.width;
+        canvas.height = this.height;
+        this.context = canvas.getContext('2d');
+      },
+      render: function () {
+        const duration = 1000;
+        const t = (performance.now() % duration) / duration;
+        const radius = size / 2 * 0.3;
+        const outerRadius = size / 2 * 0.7 * t + radius;
+        if (!this.context) return false;
+        this.context.clearRect(0, 0, this.width, this.height);
+        this.context.beginPath();
+        this.context.arc(this.width / 2, this.height / 2, outerRadius, 0, Math.PI * 2);
+        this.context.fillStyle = `rgba(255, 200, 200,${1 - t})`;
+        this.context.fill();
+        this.context.beginPath();
+        this.context.arc(this.width / 2, this.height / 2, radius, 0, Math.PI * 2);
+        this.context.fillStyle = 'rgba(255, 100, 100, 1)';
+        this.context.strokeStyle = 'white';
+        this.context.lineWidth = 2 + 4 * (1 - t);
+        this.context.fill();
+        this.context.stroke();
+        this.data = new Uint8Array(this.context.getImageData(0, 0, this.width, this.height).data);
+        map.triggerRepaint();
+        return true;
+      },
+    };
+  };
+
+  const initializeMap = useCallback((index: number, container: HTMLDivElement) => {
+    if (!container) return;
+
+    try {
+      const map = new trackasiagl.Map({
+        container,
+        style: `https://maps.track-asia.com/styles/v2/streets.json?key=${TRACK_ASIA_ACCESS_TOKEN}`,
+        center: [105.8542, 21.0285], 
+        zoom: 9,
+      });
+
+      map.on('load', () => {
+        const pulsingDot = createPulsingDot(map);
+        map.addImage('pulsing-dot', pulsingDot, { pixelRatio: 2 });
+
+        map.addSource('point', {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features: [] },
+        });
+
+        map.addLayer({
+          id: 'point',
+          type: 'symbol',
+          source: 'point',
+          layout: { 'icon-image': 'pulsing-dot' },
+        });
+
+        map.resize();
+      });
+
+      map.on('error', (e) => {
+        setMapErrors(prev => ({ ...prev, [index]: 'Lỗi tải bản đồ' }));
+        toast({ title: 'Lỗi bản đồ', description: e.error?.message || '', variant: 'destructive' });
+      });
+
+      mapRefs.current[index] = map;
+    } catch (err: any) {
+      setMapErrors(prev => ({ ...prev, [index]: err.message }));
+    }
+  }, []);
+
+  const updateMapMarker = useCallback((index: number) => {
+    const map = mapRefs.current[index];
+    if (!map) return;
+
+    const lat = form.getValues(`timeline.${index}.lat`);
+    const lng = form.getValues(`timeline.${index}.lng`);
+    const location = form.getValues(`timeline.${index}.location`);
+
+    if (typeof lat !== 'number' || typeof lng !== 'number' || !location) return;
+
+    const source = map.getSource('point') as trackasiagl.GeoJSONSource;
+    if (source) {
+      source.setData({
+        type: 'FeatureCollection',
+        features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [lng, lat] }, properties: {}, }],
+      });
+    }
+
+    if (markerRefs.current[index]) markerRefs.current[index]?.remove();
+
+    markerRefs.current[index] = new trackasiagl.Marker()
+      .setLngLat([lng, lat])
+      .setPopup(new trackasiagl.Popup().setText(location))
+      .addTo(map);
+
+    map.fitBounds([[lng - 0.05, lat - 0.05], [lng + 0.05, lat + 0.05]], { padding: 30 });
+  }, [form]);
+
+  const fetchSuggestions = useCallback(async (query: string, index: number) => {
+    if (!query.trim()) {
+      setAddressSuggestions(prev => ({ ...prev, [index]: [] }));
+      setShowSuggestions(prev => ({ ...prev, [index]: false }));
+      return;
+    }
+
+    try {
+      const params = new URLSearchParams({
+        input: query,
+        key: TRACK_ASIA_ACCESS_TOKEN,
+        size: '8',
+        location: '21.0285,105.8542',
+      });
+      const res = await fetch(`https://maps.track-asia.com/api/v2/place/autocomplete/json?${params}`);
+      const data = await res.json();
+      if (data.status === 'OK') {
+        setAddressSuggestions(prev => ({ ...prev, [index]: data.predictions || [] }));
+        setShowSuggestions(prev => ({ ...prev, [index]: true }));
+      }
+    } catch {}
+  }, []);
+
+  const geocodeLocation = useCallback(async (location: string, index: number) => {
+    if (!location.trim()) return;
+
+    setIsSearching(prev => ({ ...prev, [index]: true }));
+
+    try {
+      const params = new URLSearchParams({
+        query: location,
+        key: TRACK_ASIA_ACCESS_TOKEN,
+        language: 'vi',
+        location: '21.0285,105.8542',
+      });
+      const res = await fetch(`https://maps.track-asia.com/api/v2/place/textsearch/json?${params}`);
+      const data = await res.json();
+
+      if (data.status === 'OK' && data.results?.length > 0) {
+        const best = data.results[0];
+        const lat = best.geometry?.location?.lat;
+        const lng = best.geometry?.location?.lng;
+        const formatted = best.formatted_address || location;
+
+        form.setValue(`timeline.${index}.lat`, lat);
+        form.setValue(`timeline.${index}.lng`, lng);
+        form.setValue(`timeline.${index}.location`, formatted);
+
+        updateMapMarker(index);
+        toast({ title: 'Tìm thấy', description: formatted });
+      } else {
+        toast({ title: 'Không tìm thấy', description: 'Thử địa chỉ khác', variant: 'destructive' });
+      }
+    } catch (err: any) {
+      toast({ title: 'Lỗi tìm kiếm', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsSearching(prev => ({ ...prev, [index]: false }));
+    }
+  }, [form, updateMapMarker]);
+
+  const observerRefs = useRef<(MutationObserver | null)[]>([]);
+
+  useEffect(() => {
+  if (step !== 'timeline') {
+    mapRefs.current.forEach(m => m?.remove());
+    mapRefs.current = [];
+    markerRefs.current = [];
+    mapContainerRefs.current = [];
+    observerRefs.current.forEach(o => o?.disconnect());
+    observerRefs.current = [];
+    setMapErrors({});
+    return;
+  }
+
+  timelineFields.forEach((_, index) => {
+    const container = document.getElementById(`map-timeline-${index}`) as HTMLDivElement | null;
+
+    if (container && !mapRefs.current[index]) {
+      mapContainerRefs.current[index] = container;
+      initializeMap(index, container);
+      setTimeout(() => updateMapMarker(index), 800);
+    } 
+    else if (!mapRefs.current[index]) {
+      const observer = new MutationObserver(() => {
+        const containerNow = document.getElementById(`map-timeline-${index}`) as HTMLDivElement | null;
+        if (containerNow && !mapRefs.current[index]) {
+          mapContainerRefs.current[index] = containerNow;
+          initializeMap(index, containerNow);
+          setTimeout(() => updateMapMarker(index), 800);
+          observer.disconnect();
+          observerRefs.current[index] = null;
+        }
+      });
+
+      observer.observe(document.body, { childList: true, subtree: true });
+      observerRefs.current[index] = observer;
+    }
+  });
+
+  return () => {
+    observerRefs.current.forEach(o => o?.disconnect());
+    observerRefs.current = [];
+  };
+}, [step, timelineFields, initializeMap, updateMapMarker]);
+
+  // Khi remove timeline entry
+  const handleRemove = (index: number) => {
+    if (mapRefs.current[index]) {
+      mapRefs.current[index]?.remove();
+      mapRefs.current.splice(index, 1);
+    }
+    if (markerRefs.current[index]) {
+      markerRefs.current[index]?.remove();
+      markerRefs.current.splice(index, 1);
+    }
+    mapContainerRefs.current.splice(index, 1);
+    removeTimeline(index);
+  };
 
   const { mutate: add } = useMutation({
     mutationFn: async ({ newProduct, blockchainTxId }: { newProduct: Omit<Product, 'id' | 'blockchainTxId'>; blockchainTxId: string }) => {
@@ -481,7 +728,7 @@ const AddProductSui = () => {
                     name="productionDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Ngày sản xuất *</FormLabel>
+                        <FormLabel>Ngày gieo trồng *</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} />
                         </FormControl>
@@ -627,121 +874,129 @@ const AddProductSui = () => {
               </TabsContent>
 
               {/* Tab 3: Timeline */}
-              <TabsContent value="timeline" className="space-y-4">
+              <TabsContent value="timeline" className="space-y-6">
                 <div className="flex justify-between items-center">
                   <h3 className="text-lg font-semibold">Hành trình sản phẩm</h3>
-                  <Button
-                    type="button"
-                    onClick={() => appendTimeline({ title: '', desc: '', date: '', location: '', responsible: '', details: '' })}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Thêm mốc
+                  <Button type="button" onClick={() => appendTimeline({ title: '', desc: '', date: '', location: '', lat: undefined, lng: undefined, responsible: '', details: '' })} variant="outline" size="sm">
+                    <Plus className="w-4 h-4 mr-2" /> Thêm mốc
                   </Button>
                 </div>
 
                 {timelineFields.map((field, index) => (
-                  <div key={field.id} className="border rounded-lg p-4 space-y-3">
+                  <div key={field.id} className="border rounded-lg p-5 space-y-4 bg-white shadow-sm">
                     <div className="flex justify-between items-start">
-                      <h4 className="font-medium">Mốc {index + 1}</h4>
-                      <Button
-                        type="button"
-                        onClick={() => removeTimeline(index)}
-                        variant="destructive"
-                        size="sm"
-                      >
+                      <h4 className="font-medium text-lg">Mốc {index + 1}</h4>
+                      <Button type="button" onClick={() => handleRemove(index)} variant="destructive" size="sm">
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <FormField
-                        control={form.control}
-                        name={`timeline.${index}.title`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Tiêu đề</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Trồng trọt" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField control={form.control} name={`timeline.${index}.title`} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tiêu đề</FormLabel>
+                          <FormControl><Input {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
 
-                      <FormField
-                        control={form.control}
-                        name={`timeline.${index}.date`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Ngày</FormLabel>
-                            <FormControl>
-                              <Input type="date" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      <FormField control={form.control} name={`timeline.${index}.date`} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Ngày</FormLabel>
+                          <FormControl><Input type="date" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
                     </div>
 
-                    <FormField
-                      control={form.control}
-                      name={`timeline.${index}.desc`}
-                      render={({ field }) => (
+                    <FormField control={form.control} name={`timeline.${index}.desc`} render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Mô tả</FormLabel>
+                        <FormControl><Textarea {...field} rows={2} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField control={form.control} name={`timeline.${index}.location`} render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Mô tả</FormLabel>
+                          <FormLabel>Địa điểm</FormLabel>
                           <FormControl>
-                            <Textarea placeholder="Mô tả chi tiết..." rows={2} {...field} />
+                            <div className="relative">
+                              <Input
+                                {...field}
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                  debounce(() => fetchSuggestions(e.target.value, index), 300)();
+                                }}
+                                placeholder="Nhập địa chỉ..."
+                              />
+                              {showSuggestions[index] && addressSuggestions[index]?.length > 0 && (
+                                <ul className="absolute z-10 w-full bg-white border rounded-md mt-1 max-h-48 overflow-auto shadow-lg">
+                                  {addressSuggestions[index].map((sug, i) => (
+                                    <li
+                                      key={i}
+                                      className="p-2 hover:bg-gray-100 cursor-pointer"
+                                      onClick={() => {
+                                        const addr = sug.description || sug.terms?.map((t: any) => t.value).join(', ') || '';
+                                        form.setValue(`timeline.${index}.location`, addr);
+                                        setShowSuggestions(prev => ({ ...prev, [index]: false }));
+                                        geocodeLocation(addr, index);
+                                      }}
+                                    >
+                                      {sug.description || sug.terms?.map((t: any) => t.value).join(', ')}
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
-                      )}
-                    />
+                      )} />
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <FormField
-                        control={form.control}
-                        name={`timeline.${index}.location`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Địa điểm</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Kon Tum" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name={`timeline.${index}.responsible`}
-                        render={({ field }) => (
-                          <FormItem>
+                      <div className="flex items-end gap-2">
+                        <FormField control={form.control} name={`timeline.${index}.responsible`} render={({ field }) => (
+                          <FormItem className="flex-1">
                             <FormLabel>Người phụ trách</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Nguyễn Văn A" {...field} />
-                            </FormControl>
+                            <FormControl><Input {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
-                        )}
-                      />
+                        )} />
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => geocodeLocation(form.getValues(`timeline.${index}.location`), index)}
+                          disabled={isSearching[index]}
+                        >
+                          {isSearching[index] ? 'Đang tìm...' : 'Tìm tọa độ'}
+                        </Button>
+                      </div>
                     </div>
 
-                    <FormField
-                      control={form.control}
-                      name={`timeline.${index}.details`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Chi tiết (tùy chọn)</FormLabel>
-                          <FormControl>
-                            <Textarea placeholder="Thông tin bổ sung..." rows={2} {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                    {/* Bản đồ */}
+                    <div className="mt-3">
+                      {mapErrors[index] ? (
+                        <div className="h-[220px] bg-red-50 flex items-center justify-center text-red-600 rounded border">
+                          {mapErrors[index]}
+                        </div>
+                      ) : (
+                        <div
+                          ref={el => { mapContainerRefs.current[index] = el; }}
+                          id={`map-timeline-${index}`}
+                          className="w-full h-[220px] rounded border overflow-hidden bg-gray-100"
+                        />
                       )}
-                    />
+                    </div>
+
+                    <FormField control={form.control} name={`timeline.${index}.details`} render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Chi tiết (tùy chọn)</FormLabel>
+                        <FormControl><Textarea {...field} rows={2} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
                   </div>
                 ))}
               </TabsContent>

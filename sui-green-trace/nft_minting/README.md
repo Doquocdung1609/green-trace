@@ -47,7 +47,7 @@ Mint NFT mới cho sản phẩm.
 - `image_url`: URL hình ảnh (IPFS)
 - `origin`: Nguồn gốc
 - `farmer_name`: Tên nông dân
-- `production_date`: Ngày sản xuất
+- `production_date`: Ngày gieo trồng
 - `age`: Tuổi (số năm)
 - `blockchain_tx_id`: Transaction ID reference
 - `recipient`: Địa chỉ người nhận NFT
