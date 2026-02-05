@@ -23,17 +23,12 @@ import {
   CardTitle,
 } from '../../components/ui/card';
 
-const PACKAGE_ID = '0x18c4900231904503471f9a056057d9f8369924d4174cf62986368ac8f7e1e0e1';
-// Old package IDs for backward compatibility
-const OLD_PACKAGE_IDS = [
-  '0x8a695bb68afa0818ae84745e37be08efd3afa8bc8afa8173760be2d11fb5f2ab',
-  '0x8f8459de97c57ffef07e8b3bb71dfe28b4e8358025979e629f2eeec5c9b19e50',
-  '0x482396463dd8ae76e6fa9abebeb2242653b3be2e41234e0ac085d4e7ae898290', // First package
-];
+const PACKAGE_ID = '0xcf09b3fc7338516dd465a4dcfccbc6e9cfa875e730aa9d7e84c3dc5f13f14e73';
 const SUI_CLIENT = new SuiClient({ url: 'https://fullnode.testnet.sui.io' });
 
 interface NFTData {
   id: string;
+  owner: string;
   name: string;
   description: string;
   image_url: string;
@@ -54,6 +49,8 @@ interface NFTData {
   iot_last_updated: string;
   certifications_uri: string;
   timeline_uri: string;
+  packageId: string;
+  moduleName: string;
 }
 
 const UpdateNFT = () => {
@@ -65,6 +62,8 @@ const UpdateNFT = () => {
   const [ownedNFTs, setOwnedNFTs] = useState<NFTData[]>([]);
   const [selectedNftId, setSelectedNftId] = useState('');
   const [nftData, setNftData] = useState<NFTData | null>(null);
+  const [nftPackageId, setNftPackageId] = useState('');
+  const [nftModule, setNftModule] = useState('');
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
 
@@ -101,35 +100,57 @@ const UpdateNFT = () => {
       // Get all objects owned by wallet
       const objects = await suiClient.getOwnedObjects({
         owner: currentAccount!.address,
+        options: {
+          showContent: true,
+          showType: true,
+        },
       });
 
       console.log('Total objects found:', objects.data.length);
       console.log('Raw objects data:', objects.data);
       
-      // Filter ProductNFT objects
+      // Filter ProductNFT objects (only product_nft_v2)
       const nfts: NFTData[] = [];
       
       for (const obj of objects.data) {
         const objType = obj.data?.type;
         console.log('Object type:', objType);
         
-        // Check if this is a ProductNFT from any package version
-        const isProductNFT = objType && (
-          objType.includes(`${PACKAGE_ID}::product_nft_v2::ProductNFT`) ||
-          objType.includes(`${PACKAGE_ID}::product_nft::ProductNFT`) ||
-          OLD_PACKAGE_IDS.some(oldId => 
-            objType.includes(`${oldId}::product_nft_v2::ProductNFT`) ||
-            objType.includes(`${oldId}::product_nft::ProductNFT`)
-          )
-        );
+        // Check if this is a ProductNFT from product_nft_v2 module only
+        const isProductNFT = objType && objType.includes('::product_nft_v2::ProductNFT');
         
         if (isProductNFT && obj.data?.content) {
           try {
             const content = obj.data.content as any;
             const fields = content.fields;
 
+            // Extract package ID and module name from type
+            const typeMatch = objType!.match(/^(0x[a-f0-9]+)::([^:]+)::/);
+            const packageId = typeMatch ? typeMatch[1] : PACKAGE_ID;
+            const moduleName = typeMatch ? typeMatch[2] : 'advanced_product_nft';
+
+            // Parse owner - handle both string and object format
+            let ownerAddress = '';
+            if (typeof fields.owner === 'string') {
+              ownerAddress = fields.owner;
+            } else if (fields.owner && typeof fields.owner === 'object') {
+              // Owner might be an object with an 'id' or 'address' field
+              ownerAddress = (fields.owner as any).id || (fields.owner as any).address || '';
+            }
+            
+            // If owner is undefined/empty, NFT is owned by wallet (since it's in getOwnedObjects)
+            if (!ownerAddress) {
+              ownerAddress = currentAccount!.address;
+              console.log('Owner field undefined, using wallet address as owner');
+            }
+
+            console.log('NFT Owner field:', fields.owner);
+            console.log('Parsed owner address:', ownerAddress);
+            console.log('Current wallet:', currentAccount!.address);
+
             nfts.push({
               id: obj.data.objectId,
+              owner: ownerAddress,
               name: fields.name,
               description: fields.description,
               image_url: fields.image_url,
@@ -137,22 +158,24 @@ const UpdateNFT = () => {
               farmer_name: fields.farmer_name,
               production_date: fields.production_date,
               age: parseInt(fields.age),
-              price: parseInt(fields.price),
-              quantity: parseInt(fields.quantity),
+              price: parseInt(fields.price || fields.base_price || 0),
+              quantity: parseInt(fields.quantity || 1),
               roi: parseInt(fields.roi),
               growth_rate: parseInt(fields.growth_rate),
               iot_status: fields.iot_status,
               iot_height: parseInt(fields.iot_height),
-              iot_growth_per_month: parseInt(fields.iot_growth_per_month),
+              iot_growth_per_month: parseInt(fields.iot_growth_per_month || 0),
               iot_humidity: parseInt(fields.iot_humidity),
               iot_temperature: parseInt(fields.iot_temperature),
               iot_ph: parseInt(fields.iot_ph),
               iot_last_updated: fields.iot_last_updated,
               certifications_uri: fields.certifications_uri,
               timeline_uri: fields.timeline_uri,
+              packageId,
+              moduleName,
             });
             
-            console.log('Found ProductNFT:', fields.name);
+            console.log('Found ProductNFT:', fields.name, 'Module:', moduleName);
           } catch (error) {
             console.error('Error parsing NFT:', error);
           }
@@ -191,6 +214,8 @@ const UpdateNFT = () => {
 
     setSelectedNftId(nftId);
     setNftData(nft);
+    setNftPackageId(nft.packageId);
+    setNftModule(nft.moduleName);
 
     // Set form values
     setIotStatus(nft.iot_status);
@@ -206,7 +231,7 @@ const UpdateNFT = () => {
 
     toast({
       title: '✅ Đã chọn NFT',
-      description: nft.name,
+      description: `${nft.name} (${nft.moduleName})`,
     });
   };
 
@@ -217,49 +242,71 @@ const UpdateNFT = () => {
     try {
       const object = await SUI_CLIENT.getObject({
         id: selectedNftId,
+        options: {
+          showContent: true,
+          showType: true,
+        },
       });
 
-      if (!object.data) return;
+      if (!object.data || !object.data.content) return;
 
       const content = object.data.content as any;
       const fields = content.fields;
 
+      // Parse owner - handle both string and object format
+      let ownerAddress = '';
+      if (typeof fields.owner === 'string') {
+        ownerAddress = fields.owner;
+      } else if (fields.owner && typeof fields.owner === 'object') {
+        ownerAddress = (fields.owner as any).id || (fields.owner as any).address || '';
+      }
+      
+      // If owner is undefined/empty, the wallet holding the NFT is the owner
+      if (!ownerAddress && currentAccount?.address) {
+        ownerAddress = currentAccount.address;
+      }
+
+      console.log('Fetched NFT owner:', ownerAddress);
+
       const data: NFTData = {
         id: selectedNftId,
-        name: fields.name,
-        description: fields.description,
-        image_url: fields.image_url,
-        origin: fields.origin,
-        farmer_name: fields.farmer_name,
-        production_date: fields.production_date,
-        age: parseInt(fields.age),
-        price: parseInt(fields.price),
-        quantity: parseInt(fields.quantity),
-        roi: parseInt(fields.roi),
-        growth_rate: parseInt(fields.growth_rate),
-        iot_status: fields.iot_status,
-        iot_height: parseInt(fields.iot_height),
-        iot_growth_per_month: parseInt(fields.iot_growth_per_month),
-        iot_humidity: parseInt(fields.iot_humidity),
-        iot_temperature: parseInt(fields.iot_temperature),
-        iot_ph: parseInt(fields.iot_ph),
-        iot_last_updated: fields.iot_last_updated,
-        certifications_uri: fields.certifications_uri,
-        timeline_uri: fields.timeline_uri,
+        owner: ownerAddress,
+        name: fields.name || '',
+        description: fields.description || '',
+        image_url: fields.image_url || '',
+        origin: fields.origin || '',
+        farmer_name: fields.farmer_name || '',
+        production_date: fields.production_date || '',
+        age: parseInt(fields.age) || 0,
+        price: parseInt(fields.price || fields.base_price || '0') || 0,
+        quantity: parseInt(fields.quantity || '1') || 1,
+        roi: parseInt(fields.roi) || 0,
+        growth_rate: parseInt(fields.growth_rate) || 0,
+        iot_status: fields.iot_status || 'active',
+        iot_height: parseInt(fields.iot_height) || 0,
+        iot_growth_per_month: parseInt(fields.iot_growth_per_month || '0') || 0,
+        iot_humidity: parseInt(fields.iot_humidity) || 0,
+        iot_temperature: parseInt(fields.iot_temperature) || 0,
+        iot_ph: parseInt(fields.iot_ph) || 0,
+        iot_last_updated: fields.iot_last_updated || '',
+        certifications_uri: fields.certifications_uri || '',
+        timeline_uri: fields.timeline_uri || '',
+        packageId: nftPackageId,
+        moduleName: nftModule,
       };
 
       setNftData(data);
       
-      // Update form values
+      // Update form values with safe defaults
       setIotStatus(data.iot_status);
       setIotHeight(data.iot_height);
       setIotGrowthPerMonth(data.iot_growth_per_month);
       setIotHumidity(data.iot_humidity);
       setIotTemperature(data.iot_temperature);
-      setIotPh(data.iot_ph / 100);
+      setIotPh(data.iot_ph ? data.iot_ph / 100 : 0);
       setRoi(data.roi);
       setGrowthRate(data.growth_rate);
-      setPrice(data.price / 1000000);
+      setPrice(data.price ? data.price / 1000000 : 0);
       setDescription(data.description);
 
       toast({
@@ -279,23 +326,54 @@ const UpdateNFT = () => {
   };
 
   const updateIotData = async () => {
-    if (connectionStatus !== 'connected' || !nftData) return;
+    if (connectionStatus !== 'connected' || !nftData || !currentAccount?.address) return;
+
+    // Normalize addresses for comparison (lowercase)
+    const nftOwner = nftData.owner.toLowerCase();
+    const walletAddress = currentAccount.address.toLowerCase();
+
+    console.log('=== Update Permission Check ===');
+    console.log('NFT Owner:', nftOwner);
+    console.log('Wallet Address:', walletAddress);
+    console.log('Match:', nftOwner === walletAddress);
+
+    // Check ownership
+    if (nftOwner !== walletAddress) {
+      toast({
+        title: '❌ Không có quyền',
+        description: `Chỉ chủ sở hữu NFT mới có thể cập nhật thông tin.\n\nOwner: ${nftData.owner}\nYour address: ${currentAccount.address}`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Check module compatibility
+    if (nftModule !== 'product_nft_v2') {
+      toast({
+        title: '❌ Module không hỗ trợ',
+        description: `Module "${nftModule}" không hỗ trợ cập nhật động. Chỉ NFT từ product_nft_v2 mới có thể cập nhật.`,
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setUpdating(true);
     try {
       const txb = new Transaction();
 
+      // product_nft_v2 signature
+      const currentTime = new Date().toISOString();
       txb.moveCall({
-        target: `${PACKAGE_ID}::product_nft_v2::update_iot_data`,
+        target: `${nftPackageId}::product_nft_v2::update_iot_data`,
         arguments: [
           txb.object(nftData.id),
           txb.pure.string(iotStatus),
-          txb.pure.u64(BigInt(iotHeight)),
-          txb.pure.u64(BigInt(iotGrowthPerMonth)),
-          txb.pure.u64(BigInt(iotHumidity)),
-          txb.pure.u64(BigInt(iotTemperature)),
-          txb.pure.u64(BigInt(Math.floor(iotPh * 100))),
-          txb.pure.string(new Date().toISOString()),
+          txb.pure.u64(iotHeight),
+          txb.pure.u64(iotGrowthPerMonth),
+          txb.pure.u64(iotHumidity),
+          txb.pure.u64(iotTemperature),
+          txb.pure.u64(Math.floor(iotPh * 100)), // pH in hundredths
+          txb.pure.string(currentTime),
         ],
       });
 
@@ -332,19 +410,44 @@ const UpdateNFT = () => {
   };
 
   const updateFinancialData = async () => {
-    if (connectionStatus !== 'connected' || !nftData) return;
+    if (connectionStatus !== 'connected' || !nftData || !currentAccount?.address) return;
+
+    // Normalize addresses for comparison (lowercase)
+    const nftOwner = nftData.owner.toLowerCase();
+    const walletAddress = currentAccount.address.toLowerCase();
+
+    // Check ownership
+    if (nftOwner !== walletAddress) {
+      toast({
+        title: '❌ Không có quyền',
+        description: `Chỉ chủ sở hữu NFT mới có thể cập nhật thông tin.\n\nOwner: ${nftData.owner}\nYour address: ${currentAccount.address}`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Check module compatibility
+    if (nftModule !== 'product_nft_v2') {
+      toast({
+        title: '❌ Module không hỗ trợ',
+        description: `Module "${nftModule}" không hỗ trợ cập nhật động. Chỉ NFT từ product_nft_v2 mới có thể cập nhật.`,
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setUpdating(true);
     try {
       const txb = new Transaction();
 
+      // product_nft_v2 uses update_financial_data (roi, growth_rate, price)
       txb.moveCall({
-        target: `${PACKAGE_ID}::product_nft_v2::update_financial_data`,
+        target: `${nftPackageId}::product_nft_v2::update_financial_data`,
         arguments: [
           txb.object(nftData.id),
-          txb.pure.u64(BigInt(roi)),
-          txb.pure.u64(BigInt(growthRate)),
-          txb.pure.u64(BigInt(Math.floor(price * 1000000))), // Convert to micro units
+          txb.pure.u64(roi),
+          txb.pure.u64(growthRate),
+          txb.pure.u64(Math.floor(price * 1000000)), // price in micro units
         ],
       });
 
@@ -381,14 +484,38 @@ const UpdateNFT = () => {
   };
 
   const updateDescription = async () => {
-    if (connectionStatus !== 'connected' || !nftData) return;
+    if (connectionStatus !== 'connected' || !nftData || !currentAccount?.address) return;
+
+    // Normalize addresses for comparison (lowercase)
+    const nftOwner = nftData.owner.toLowerCase();
+    const walletAddress = currentAccount.address.toLowerCase();
+
+    // Check ownership
+    if (nftOwner !== walletAddress) {
+      toast({
+        title: '❌ Không có quyền',
+        description: `Chỉ chủ sở hữu NFT mới có thể cập nhật thông tin.\n\nOwner: ${nftData.owner}\nYour address: ${currentAccount.address}`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Check module compatibility
+    if (nftModule !== 'product_nft_v2') {
+      toast({
+        title: '❌ Module không hỗ trợ',
+        description: `Module "${nftModule}" không hỗ trợ cập nhật động. Chỉ NFT từ product_nft_v2 mới có thể cập nhật.`,
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setUpdating(true);
     try {
       const txb = new Transaction();
 
       txb.moveCall({
-        target: `${PACKAGE_ID}::product_nft_v2::update_description`,
+        target: `${nftPackageId}::${nftModule}::update_description`,
         arguments: [
           txb.object(nftData.id),
           txb.pure.string(description),
@@ -558,11 +685,24 @@ const UpdateNFT = () => {
                           <p className="text-xs text-gray-500">
                             Tuổi: {nft.age} năm
                           </p>
+                          <p className="text-xs font-mono text-gray-400 mt-1">
+                            Module: {nft.moduleName}
+                          </p>
                         </div>
                       </div>
                       {selectedNftId === nft.id && (
                         <div className="mt-2 text-xs text-emerald-600 font-medium">
                           ✓ Đang chọn
+                        </div>
+                      )}
+                      {nft.moduleName !== 'product_nft_v2' && (
+                        <div className="mt-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                          ⚠️ Module cũ - Không hỗ trợ
+                        </div>
+                      )}
+                      {currentAccount && nft.owner && nft.owner.toLowerCase() !== currentAccount.address.toLowerCase() && (
+                        <div className="mt-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">
+                          🔒 Bạn không phải owner
                         </div>
                       )}
                     </div>
@@ -579,6 +719,53 @@ const UpdateNFT = () => {
               animate={{ opacity: 1 }}
               className="space-y-6"
             >
+              {/* Ownership Warning */}
+              {currentAccount && nftData.owner && nftData.owner.toLowerCase() !== currentAccount.address.toLowerCase() && (
+                <Card className="border-red-300 bg-red-50">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start gap-3">
+                      <div className="text-red-600 text-2xl">🔒</div>
+                      <div>
+                        <h3 className="font-semibold text-red-900 mb-2">
+                          Bạn không phải chủ sở hữu NFT này
+                        </h3>
+                        <p className="text-sm text-red-800 mb-2">
+                          Chỉ chủ sở hữu NFT mới có thể cập nhật thông tin.
+                        </p>
+                        <p className="text-sm text-red-800">
+                          Owner: <code className="bg-red-100 px-2 py-1 rounded font-mono text-xs">{nftData.owner}</code>
+                        </p>
+                        <p className="text-sm text-red-800 mt-1">
+                          Your address: <code className="bg-red-100 px-2 py-1 rounded font-mono text-xs">{currentAccount.address}</code>
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Module Compatibility Warning */}
+              {nftModule !== 'product_nft_v2' && (
+                <Card className="border-amber-300 bg-amber-50">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start gap-3">
+                      <div className="text-amber-600 text-2xl">⚠️</div>
+                      <div>
+                        <h3 className="font-semibold text-amber-900 mb-2">
+                          NFT từ module cũ không hỗ trợ cập nhật
+                        </h3>
+                        <p className="text-sm text-amber-800 mb-2">
+                          NFT này được tạo từ module <code className="bg-amber-100 px-2 py-1 rounded">{nftModule}</code> không có chức năng cập nhật động.
+                        </p>
+                        <p className="text-sm text-amber-800">
+                          Chỉ NFT từ module <code className="bg-amber-100 px-2 py-1 rounded">product_nft_v2</code> mới có thể cập nhật.
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Current Info */}
               <Card>
                 <CardHeader>
@@ -679,14 +866,18 @@ const UpdateNFT = () => {
 
                       <Button
                         onClick={updateIotData}
-                        disabled={updating}
-                        className="w-full bg-emerald-500 hover:bg-emerald-600"
+                        disabled={updating || nftModule !== 'product_nft_v2' || (!!currentAccount && !!nftData.owner && nftData.owner.toLowerCase() !== currentAccount.address.toLowerCase())}
+                        className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {updating ? (
                           <>
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                             Đang cập nhật...
                           </>
+                        ) : (currentAccount && nftData.owner && nftData.owner.toLowerCase() !== currentAccount.address.toLowerCase()) ? (
+                          <>🔒 Không có quyền</>
+                        ) : nftModule !== 'product_nft_v2' ? (
+                          <>⚠️ Module không hỗ trợ</>
                         ) : (
                           <>
                             <Save className="w-4 h-4 mr-2" />
@@ -735,14 +926,18 @@ const UpdateNFT = () => {
 
                       <Button
                         onClick={updateFinancialData}
-                        disabled={updating}
-                        className="w-full bg-emerald-500 hover:bg-emerald-600"
+                        disabled={updating || nftModule !== 'product_nft_v2' || (!!currentAccount && !!nftData.owner && nftData.owner.toLowerCase() !== currentAccount.address.toLowerCase())}
+                        className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {updating ? (
                           <>
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                             Đang cập nhật...
                           </>
+                        ) : (currentAccount && nftData.owner && nftData.owner.toLowerCase() !== currentAccount.address.toLowerCase()) ? (
+                          <>🔒 Không có quyền</>
+                        ) : nftModule !== 'product_nft_v2' ? (
+                          <>⚠️ Module không hỗ trợ</>
                         ) : (
                           <>
                             <Save className="w-4 h-4 mr-2" />
@@ -771,14 +966,18 @@ const UpdateNFT = () => {
 
                       <Button
                         onClick={updateDescription}
-                        disabled={updating}
-                        className="w-full bg-emerald-500 hover:bg-emerald-600"
+                        disabled={updating || nftModule !== 'product_nft_v2' || (!!currentAccount && !!nftData.owner && nftData.owner.toLowerCase() !== currentAccount.address.toLowerCase())}
+                        className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {updating ? (
                           <>
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                             Đang cập nhật...
                           </>
+                        ) : (currentAccount && nftData.owner && nftData.owner.toLowerCase() !== currentAccount.address.toLowerCase()) ? (
+                          <>🔒 Không có quyền</>
+                        ) : nftModule !== 'product_nft_v2' ? (
+                          <>⚠️ Module không hỗ trợ</>
                         ) : (
                           <>
                             <Save className="w-4 h-4 mr-2" />
