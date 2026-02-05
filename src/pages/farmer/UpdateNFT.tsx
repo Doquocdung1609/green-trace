@@ -990,19 +990,6 @@ const UpdateNFT = () => {
                 </TabsContent>
               </Tabs>
 
-              {/* View on Explorer */}
-              <Card>
-                <CardContent className="pt-6">
-                  <a
-                    href={`https://suiscan.xyz/devnet/object/${nftData.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-emerald-600 hover:underline flex items-center gap-2"
-                  >
-                    🔍 Xem NFT trên Suiscan Explorer
-                  </a>
-                </CardContent>
-              </Card>
             </motion.div>
           )}
           </>
