@@ -12,6 +12,7 @@ import FarmerDashboard from './pages/farmer/Dashboard';
 import FarmerProducts from './pages/farmer/Products';
 import FarmerAddProduct from './pages/farmer/AddProductSui';
 import FarmerProfile from './pages/farmer/Profile';
+import UpdateNFT from './pages/farmer/UpdateNFT';
 import Shop from './pages/customer/Shop';
 import ProductDetail from './pages/customer/ProductDetail';
 import Cart from './pages/customer/Cart';                
@@ -51,6 +52,7 @@ function App() {
                 <Route path="/farmer/add-product" element={<FarmerAddProduct />} />
                 <Route path="/farmer/profile" element={<FarmerProfile />} />
                 <Route path="/farmer/edit-product/:id" element={<EditProduct />} />
+                <Route path="/farmer/update-nft" element={<UpdateNFT />} />
                 <Route path="/farmer/orders" element={<OrdersFarmer />} />
               </Route>
 

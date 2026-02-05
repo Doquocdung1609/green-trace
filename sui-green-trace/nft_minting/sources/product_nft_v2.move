@@ -6,9 +6,13 @@ module nft_minting::product_nft_v2 {
     use std::string::{Self, String};
     use sui::event;
 
+    // ========== Error Codes ==========
+    const ENotOwner: u64 = 1;
+
     /// NFT đại diện cho sản phẩm nông nghiệp với đầy đủ thông tin
     public struct ProductNFT has key, store {
         id: UID,
+        owner: address,
         // Thông tin cơ bản
         name: String,
         description: String,
@@ -80,6 +84,7 @@ module nft_minting::product_nft_v2 {
     ) {
         let nft = ProductNFT {
             id: object::new(ctx),
+            owner: recipient,
             name: string::utf8(name),
             description: string::utf8(description),
             image_url: string::utf8(image_url),
@@ -118,7 +123,8 @@ module nft_minting::product_nft_v2 {
     /// Xóa NFT
     public entry fun burn(nft: ProductNFT) {
         let ProductNFT { 
-            id, 
+            id,
+            owner: _,
             name: _, 
             description: _, 
             image_url: _, 
@@ -214,6 +220,10 @@ module nft_minting::product_nft_v2 {
         iot_last_updated: vector<u8>,
         ctx: &mut TxContext
     ) {
+        // Check permission: chỉ owner mới được update
+        let sender = tx_context::sender(ctx);
+        assert!(sender == nft.owner, ENotOwner);
+        
         nft.iot_status = string::utf8(iot_status);
         nft.iot_height = iot_height;
         nft.iot_growth_per_month = iot_growth_per_month;
@@ -235,6 +245,10 @@ module nft_minting::product_nft_v2 {
         new_timeline_uri: vector<u8>,
         ctx: &mut TxContext
     ) {
+        // Check permission: chỉ owner mới được update
+        let sender = tx_context::sender(ctx);
+        assert!(sender == nft.owner, ENotOwner);
+        
         nft.timeline_uri = string::utf8(new_timeline_uri);
 
         event::emit(NFTUpdated {
@@ -252,6 +266,10 @@ module nft_minting::product_nft_v2 {
         new_price: u64,
         ctx: &mut TxContext
     ) {
+        // Check permission: chỉ owner mới được update
+        let sender = tx_context::sender(ctx);
+        assert!(sender == nft.owner, ENotOwner);
+        
         nft.roi = new_roi;
         nft.growth_rate = new_growth_rate;
         nft.price = new_price;
@@ -269,6 +287,10 @@ module nft_minting::product_nft_v2 {
         new_certifications_uri: vector<u8>,
         ctx: &mut TxContext
     ) {
+        // Check permission: chỉ owner mới được update
+        let sender = tx_context::sender(ctx);
+        assert!(sender == nft.owner, ENotOwner);
+        
         nft.certifications_uri = string::utf8(new_certifications_uri);
 
         event::emit(NFTUpdated {
@@ -284,6 +306,10 @@ module nft_minting::product_nft_v2 {
         new_age: u64,
         ctx: &mut TxContext
     ) {
+        // Check permission: chỉ owner mới được update
+        let sender = tx_context::sender(ctx);
+        assert!(sender == nft.owner, ENotOwner);
+        
         nft.age = new_age;
 
         event::emit(NFTUpdated {
@@ -299,6 +325,10 @@ module nft_minting::product_nft_v2 {
         new_description: vector<u8>,
         ctx: &mut TxContext
     ) {
+        // Check permission: chỉ owner mới được update
+        let sender = tx_context::sender(ctx);
+        assert!(sender == nft.owner, ENotOwner);
+        
         nft.description = string::utf8(new_description);
 
         event::emit(NFTUpdated {
@@ -306,5 +336,41 @@ module nft_minting::product_nft_v2 {
             field_updated: string::utf8(b"description"),
             updated_by: tx_context::sender(ctx),
         });
+    }
+
+    // ========== TRANSFER & OWNERSHIP ==========
+
+    /// Event khi transfer NFT
+    public struct NFTTransferred has copy, drop {
+        nft_id: address,
+        from: address,
+        to: address,
+    }
+
+    /// Transfer NFT và cập nhật owner
+    public entry fun transfer_nft(
+        mut nft: ProductNFT,
+        recipient: address,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        let nft_id = object::uid_to_address(&nft.id);
+        
+        event::emit(NFTTransferred {
+            nft_id,
+            from: sender,
+            to: recipient,
+        });
+
+        // Update owner
+        nft.owner = recipient;
+
+        // Transfer NFT
+        transfer::public_transfer(nft, recipient);
+    }
+
+    /// Get owner của NFT
+    public fun get_owner(nft: &ProductNFT): address {
+        nft.owner
     }
 }

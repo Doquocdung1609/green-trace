@@ -25,6 +25,7 @@ export interface Product {
   timeline: TimelineEntry[];
   certifications: Certification[];
   blockchainTxId: string;
+  nftId?: string; // Sui object ID of the NFT
   growthRate: number;     // % tăng trưởng giá trị / năm
   age: number;            // Tuổi của cây hoặc vật nuôi (năm)
   iotStatus: 'Đang theo dõi' | 'Ngưng theo dõi' | 'Lỗi cảm biến'; // trạng thái IoT

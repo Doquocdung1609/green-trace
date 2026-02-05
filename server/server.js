@@ -613,6 +613,7 @@ function ensureProductFields(product) {
     timeline: product.timeline || [],
     certifications: product.certifications || [],
     blockchainTxId: product.blockchainTxId || `tx-${uuidv4()}`,
+    nftId: product.nftId || undefined, // Sui NFT object ID
     roi: product.roi || 0,
     priceHistory: product.priceHistory || mockPriceHistory(product.price || 0),
     iotData: {

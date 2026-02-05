@@ -26,12 +26,13 @@ export const fetchProducts = async (): Promise<Product[]> => {
 
 // Thêm sản phẩm mới
 export const addProduct = async (
-  newProduct: Omit<Product, 'id' | 'blockchainTxId'>,
+  newProduct: Omit<Product, 'id' | 'blockchainTxId' | 'nftId'>,
   blockchainTxId: string,
-  email: string
+  email: string,
+  nftId?: string
 ): Promise<Product> => {
   try {
-    const product = { ...newProduct, blockchainTxId, email };
+    const product = { ...newProduct, blockchainTxId, nftId, email };
     const response = await fetch(`${API_BASE_URL}/products`, {
       method: 'POST',
       headers: {

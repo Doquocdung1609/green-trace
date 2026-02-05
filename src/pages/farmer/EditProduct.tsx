@@ -37,6 +37,7 @@ import { toast } from '../../hooks/use-toast';
 import type { Product} from '../../types/types';
 import trackasiagl from 'trackasia-gl';
 import React from 'react';
+import { BlockchainUpdatePanel } from '../../components/BlockchainUpdatePanel';
 
 const schema = z.object({
   name: z.string().min(1, 'Tên sản phẩm là bắt buộc'),
@@ -787,6 +788,9 @@ useEffect(() => {
               <TabsTrigger value="timeline">Dòng thời gian</TabsTrigger>
               <TabsTrigger value="certifications">Chứng nhận</TabsTrigger>
               <TabsTrigger value="growth">Thông tin tăng trưởng & IoT</TabsTrigger>
+              {product?.nftId && (
+                <TabsTrigger value="blockchain">🔗 Cập nhật Blockchain</TabsTrigger>
+              )}
             </TabsList>
 
             <Form {...form}>
@@ -1328,6 +1332,23 @@ useEffect(() => {
                     />
                   </div>
                 </TabsContent>
+
+                {product?.nftId && (
+                  <TabsContent value="blockchain" className="space-y-4">
+                    <BlockchainUpdatePanel
+                      nftId={product.nftId}
+                      description={form.watch('description')}
+                      price={form.watch('price')}
+                      roi={form.watch('roi')}
+                      growthRate={form.watch('growthRate')}
+                      iotStatus={form.watch('iotStatus')}
+                      iotHeight={form.watch('iotData.height')}
+                      iotHumidity={form.watch('iotData.humidity')}
+                      iotTemperature={form.watch('iotData.temperature')}
+                      imageUrl={typeof form.watch('image') === 'string' ? form.watch('image') : undefined}
+                    />
+                  </TabsContent>
+                )}
 
                 <Button
                   type="submit"

@@ -38,7 +38,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import type { Product, Certification } from '../../types/types';
 import trackasiagl from 'trackasia-gl';
 
-const PACKAGE_ID = '0x18c4900231904503471f9a056057d9f8369924d4174cf62986368ac8f7e1e0e1';
+const PACKAGE_ID = '0xcf09b3fc7338516dd465a4dcfccbc6e9cfa875e730aa9d7e84c3dc5f13f14e73';
 
 const timelineDefaults = [
   { title: 'Trồng trọt', desc: 'Bắt đầu gieo trồng sản phẩm.' },
@@ -397,8 +397,8 @@ const AddProductSui = () => {
   };
 
   const { mutate: add } = useMutation({
-    mutationFn: async ({ newProduct, blockchainTxId }: { newProduct: Omit<Product, 'id' | 'blockchainTxId'>; blockchainTxId: string }) => {
-      return addProduct(newProduct, blockchainTxId, user?.email || '');
+    mutationFn: async ({ newProduct, blockchainTxId, nftId }: { newProduct: Omit<Product, 'id' | 'blockchainTxId' | 'nftId'>; blockchainTxId: string; nftId?: string }) => {
+      return addProduct(newProduct, blockchainTxId, user?.email || '', nftId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['farmerProducts'] });
@@ -514,11 +514,8 @@ const AddProductSui = () => {
       const tempTxId = `sui-temp-${Date.now()}`;
 
       txb.moveCall({
-        target: `${PACKAGE_ID}::advanced_product_nft::mint_product_nft`,
+        target: `${PACKAGE_ID}::product_nft_v2::mint_product_nft`,
         arguments: [
-          // Registry (shared object)
-          txb.object('0xc2ebceb5f68416005a128ac55e4a60a0b62a9cf287639ea8f135ff186c439ea0'),
-          
           // Basic info
           txb.pure.string(data.name),
           txb.pure.string(data.description),
@@ -528,31 +525,28 @@ const AddProductSui = () => {
           txb.pure.string(data.productionDate),
           
           // Economic params
-          txb.pure.u64(BigInt(data.age)),
-          txb.pure.u64(BigInt(Math.floor(data.price * 1000000))), // base_price
-          txb.pure.u64(BigInt(data.roi)),
-          txb.pure.u64(BigInt(data.growthRate)),
-          txb.pure.u64(BigInt(1000000)), // monthly_maintenance_fee (default 1 SUI)
-          
-          // Transfer type (0: Direct)
-          txb.pure.u8(0),
+          txb.pure.u64(data.age),
+          txb.pure.u64(Math.floor(data.price * 1000000)), // price in micro units
+          txb.pure.u64(data.quantity),
+          txb.pure.u64(data.roi),
+          txb.pure.u64(data.growthRate),
           
           // IoT data
           txb.pure.string(data.iotStatus),
-          txb.pure.u64(BigInt(data.iotData.height)),
-          txb.pure.u64(BigInt(data.iotData.humidity)),
-          txb.pure.u64(BigInt(data.iotData.temperature)),
+          txb.pure.u64(data.iotData.height),
+          txb.pure.u64(data.iotData.growthPerMonth),
+          txb.pure.u64(data.iotData.humidity),
+          txb.pure.u64(data.iotData.temperature),
+          txb.pure.u64(Math.floor(data.iotData.pH * 100)), // pH in hundredths
+          txb.pure.string(data.iotData.lastUpdated),
           
           // URIs
           txb.pure.string(certsUri),
           txb.pure.string(timelineUri),
-          txb.pure.string(tempTxId), // metadata_uri
+          txb.pure.string(tempTxId),
           
           // Recipient
           txb.pure.address(currentAccount.address),
-          
-          // Clock
-          txb.object('0x6'),
         ],
       });
 
@@ -565,8 +559,33 @@ const AddProductSui = () => {
             onSuccess: (result) => {
               console.log('✅ NFT Minted on Sui!', result);
 
+              // Extract NFT object ID from transaction result
+              let nftObjectId: string | undefined;
+              
+              try {
+                // Access the created objects from the result
+                // In Sui SDK, the structure is: result.effects.created
+                const effects = (result as any).effects;
+                const createdObjects = effects?.created;
+                
+                if (createdObjects && Array.isArray(createdObjects) && createdObjects.length > 0) {
+                  // Find the ProductNFT object (usually the first object sent to user's address)
+                  const nftObject = createdObjects.find((obj: any) => {
+                    // Check if it's owned by an address (not immutable or shared)
+                    return obj.owner && typeof obj.owner === 'object' && 'AddressOwner' in obj.owner;
+                  });
+                  
+                  if (nftObject && nftObject.reference) {
+                    nftObjectId = nftObject.reference.objectId;
+                    console.log('NFT Object ID:', nftObjectId);
+                  }
+                }
+              } catch (error) {
+                console.error('Error extracting NFT ID:', error);
+              }
+
               // Step 6: Save product to backend
-              const newProduct: Omit<Product, 'id' | 'blockchainTxId'> = {
+              const newProduct: Omit<Product, 'id' | 'blockchainTxId' | 'nftId'> = {
                 name: data.name,
                 description: data.description,
                 roi: data.roi,
@@ -583,7 +602,7 @@ const AddProductSui = () => {
                 iotData: data.iotData,
               };
 
-              add({ newProduct, blockchainTxId: result.digest });
+              add({ newProduct, blockchainTxId: result.digest, nftId: nftObjectId });
 
               toast({
                 title: 'Mint NFT thành công!',
