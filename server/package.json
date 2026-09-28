@@ -25,6 +25,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "green-trace": "file:..",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
     "zod": "^4.6.5"

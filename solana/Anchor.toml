@@ -1,19 +1,23 @@
 [toolchain]
-anchor_version = "0.31.1"
+anchor_version = "0.32.1"
+solana_version = "2.3.13"
 
 [features]
 resolution = true
 skip-lint = false
 
-[programs.localnet]
-green_trace_registry = "6MdPz4cbp3YFU7G1RVzGga287T1Dv7gfYHXr7Ud1G9wo"
-
 [programs.devnet]
-green_trace_registry = "6MdPz4cbp3YFU7G1RVzGga287T1Dv7gfYHXr7Ud1G9wo"
+green_trace_registry = "8TaGQypY5obcUJqT2GK5vEB1idaDFuqbEUwFrhdJDTg9"
+
+[programs.localnet]
+green_trace_registry = "8TaGQypY5obcUJqT2GK5vEB1idaDFuqbEUwFrhdJDTg9"
+
+[registry]
+url = "https://api.apr.dev"
 
 [provider]
-cluster = "devnet"
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "npx mocha --timeout 1000000 tests/**/*.ts"
+test = "npx tsx ./node_modules/mocha/bin/mocha.js --timeout 1000000 tests/**/*.ts"

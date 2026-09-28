@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("6MdPz4cbp3YFU7G1RVzGga287T1Dv7gfYHXr7Ud1G9wo");
+declare_id!("8TaGQypY5obcUJqT2GK5vEB1idaDFuqbEUwFrhdJDTg9");
 
 #[program]
 pub mod green_trace_registry {
