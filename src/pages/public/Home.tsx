@@ -1,148 +1,186 @@
-import { motion } from 'framer-motion';
-import { Parallax } from 'react-parallax';
-import Lottie from 'lottie-react';
-import leafAnim from '../../assets/leaves.json';
-import Header from '../../components/ui/Header';
-import Footer from '../../components/ui/Footer';
-import { Cpu, Coins, Leaf } from 'lucide-react';
-import ProductCard from '../../components/ui/ProductCard';
-import type { Product } from '../../types/types';
-import { useQuery } from '@tanstack/react-query';
-import { fetchProducts } from '../../services/api';
+import {
+  ArrowRight,
+  CheckCircle2,
+  Database,
+  FileCheck2,
+  Fingerprint,
+  Leaf,
+  ShieldCheck,
+  Waypoints,
+} from "lucide-react";
+import { Link } from "react-router-dom";
 
-const Home = () => {
-  const { data: products, isLoading, isError } = useQuery({
-    queryKey: ['products'],
-    queryFn: fetchProducts,
-  });
+const layers = [
+  [
+    "01",
+    "Định danh tài sản",
+    "Mã duy nhất, chủ thể quản lý, vùng và mốc tạo lập.",
+  ],
+  [
+    "02",
+    "Kho bằng chứng",
+    "Ảnh, vị trí, nhật ký, IoT, chứng nhận và kiểm nghiệm.",
+  ],
+  [
+    "03",
+    "Xác minh độc lập",
+    "Mỗi người xác nhận đúng phạm vi và chịu trách nhiệm cho chữ ký.",
+  ],
+  [
+    "04",
+    "Sổ vòng đời",
+    "Trạng thái chỉ đổi khi có bằng chứng và quy tắc phù hợp.",
+  ],
+  [
+    "05",
+    "Hồ sơ tin cậy",
+    "Điểm có diễn giải, độ mới và các bất thường cần kiểm tra.",
+  ],
+  [
+    "06",
+    "Hộ chiếu tài sản số",
+    "Bản tổng hợp có phiên bản để đối tác bắt đầu thẩm định.",
+  ],
+];
+
+export function Home() {
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-green-50 to-white dark:from-gray-900 dark:to-gray-800 transition-all">
-      <Header />
+    <div className="public-page">
+      <header className="public-nav">
+        <Link to="/" className="brand">
+          <Leaf />
+          <span>GreenTrace</span>
+        </Link>
+        <nav>
+          <a href="#how">Cách hoạt động</a>
+          <a href="#trust">Mô hình tin cậy</a>
+          <Link to="/passport/GT-NL-2026-000128">Hộ chiếu mẫu</Link>
+        </nav>
+        <div>
+          <Link className="button secondary" to="/login">
+            Đăng nhập
+          </Link>
+          <Link className="button primary" to="/register">
+            Đăng ký
+          </Link>
+        </div>
+      </header>
 
-      {/* 🚀 Hero Section */}
-      <Parallax
-        bgImage="https://images.unsplash.com/photo-1616627989736-25a64b1b3d70?auto=format&fit=crop&w=1600&q=80"
-        strength={400}
-      >
-        <motion.section
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7 }}
-          className="relative text-white py-32 px-6 text-center bg-green-600/70 backdrop-blur-md"
-        >
-          <div className="absolute inset-0 opacity-15 pointer-events-none">
-            <Lottie animationData={leafAnim} loop />
+      <main>
+        <section className="hero">
+          <div className="hero-copy">
+            <p className="eyebrow">
+              <ShieldCheck size={16} /> Hạ tầng xác minh trước tài chính hóa
+            </p>
+            <h1>
+              Biến bằng chứng rời rạc thành{" "}
+              <em>hồ sơ tài sản có thể kiểm tra</em>
+            </h1>
+            <p>
+              GreenTrace giúp trả lời tài sản nào, ở đâu, ai quản lý, bằng chứng
+              nào mô tả vòng đời, ai đã xác minh và hồ sơ hiện đủ tin cậy đến
+              đâu.
+            </p>
+            <div className="hero-actions">
+              <Link className="button primary" to="/login">
+                Vào hệ thống <ArrowRight size={18} />
+              </Link>
+              <Link className="text-link" to="/passport/GT-NL-2026-000128">
+                Xem hộ chiếu mẫu
+              </Link>
+            </div>
+            <div className="hero-proof">
+              <span>
+                <CheckCircle2 /> Không cần ví để xem hộ chiếu công khai
+              </span>
+              <span>
+                <CheckCircle2 /> Không phát hành token trong MVP
+              </span>
+            </div>
           </div>
+          <div className="hero-visual">
+            <div className="passport-preview">
+              <div className="preview-head">
+                <span>GT</span>
+                <div>
+                  <small>HỘ CHIẾU TÀI SẢN SỐ</small>
+                  <strong>Sâm Ngọc Linh</strong>
+                </div>
+                <span className="verified-dot">✓</span>
+              </div>
+              <div className="score-ring">
+                <div>
+                  <strong>82</strong>
+                  <span>/100</span>
+                </div>
+              </div>
+              <p>Điểm tin cậy hồ sơ</p>
+              <div className="preview-row">
+                <Fingerprint />
+                <span>Định danh</span>
+                <strong>20/20</strong>
+              </div>
+              <div className="preview-row">
+                <Database />
+                <span>Bằng chứng</span>
+                <strong>17/20</strong>
+              </div>
+              <div className="preview-row">
+                <FileCheck2 />
+                <span>Xác minh</span>
+                <strong>21/30</strong>
+              </div>
+              <div className="readiness">
+                <span>Sẵn sàng để đối tác tài chính bắt đầu xem xét</span>
+              </div>
+            </div>
+          </div>
+        </section>
 
-          <motion.h1
-            className="text-6xl font-bold mb-4 drop-shadow-lg"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-          >
-            GreenTrace 2.0 🌱
-          </motion.h1>
-          <p className="text-lg md:text-xl font-medium mb-8">
-            Tokenized Sustainable Assets – Đầu tư sinh học minh bạch, tăng trưởng bằng IoT & Blockchain Sui
-          </p>
-          <motion.a
-            href="/farmer/add-product"
-            whileHover={{ scale: 1.05 }}
-            className="inline-block bg-white text-green-700 font-semibold px-8 py-3 rounded-full shadow-lg hover:bg-green-100 transition"
-          >
-            Tạo NFT BioAsset
-          </motion.a>
-        </motion.section>
-      </Parallax>
-
-      {/* ⚙️ Features */}
-      <section className="py-20 px-6 bg-white dark:bg-gray-900">
-        <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-10 text-center">
-          {[
-            {
-              icon: <Leaf className="w-12 h-12 mx-auto text-green-600 mb-4" />,
-              title: 'IoT Growth Tracking',
-              desc: 'Theo dõi sinh trưởng tài sản sinh học theo thời gian thực qua cảm biến IoT.',
-            },
-            {
-              icon: <Coins className="w-12 h-12 mx-auto text-green-600 mb-4" />,
-              title: 'NFT Ownership',
-              desc: 'Tài sản được mã hóa thành NFT – đảm bảo quyền sở hữu minh bạch và giao dịch được trên Sui blockchain.',
-            },
-            {
-              icon: <Cpu className="w-12 h-12 mx-auto text-green-600 mb-4" />,
-              title: 'Smart Yield',
-              desc: 'Theo dõi hiệu quả đầu tư và sinh lời bền vững từ tăng trưởng sinh học.',
-            },
-          ].map((item, idx) => (
-            <motion.div
-              key={idx}
-              whileHover={{ y: -8 }}
-              className="p-8 bg-green-50 dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-all"
-            >
-              {item.icon}
-              <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
-              <p className="text-gray-600 dark:text-gray-300">{item.desc}</p>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      {/* 💠 BioAsset Grid */}
-      <section className="p-6 max-w-7xl mx-auto flex-grow">
-        <h2 className="text-3xl font-bold mb-8 text-center text-green-700 dark:text-green-400">
-          🌿 BioAssets tiềm năng
-        </h2>
-        {isLoading ? (
-          <p className="text-center">Đang tải danh sách tài sản...</p>
-        ) : isError ? (
-          <p className="text-center text-red-500">Lỗi khi tải BioAsset</p>
-        ) : (
-          <motion.div
-            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-10"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ staggerChildren: 0.15 }}
-          >
-            {products?.slice(0, 4).map((product: Product) => (
-              <motion.div key={product.id}>
-                <ProductCard product={product} />
-              </motion.div>
+        <section id="how" className="section">
+          <p className="eyebrow">Quy trình sản phẩm</p>
+          <h2>Bằng chứng và người xác minh đi trước blockchain</h2>
+          <div className="layer-grid">
+            {layers.map(([number, title, text]) => (
+              <article key={number}>
+                <span>{number}</span>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </article>
             ))}
-          </motion.div>
-        )}
-      </section>
+          </div>
+        </section>
 
-      {/* CTA Section */}
-      <motion.section
-        className="text-center py-20 bg-gradient-to-r from-green-100 to-green-200 dark:from-green-800 dark:to-green-700"
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        transition={{ duration: 0.6 }}
-      >
-        <h3 className="text-2xl font-semibold mb-4">Bắt đầu hành trình với GreenTrace 🌳</h3>
-        <p className="mb-6 text-gray-700 dark:text-gray-300">
-          Farmer tạo NFT BioAsset, nhà đầu tư theo dõi tài sản trên Sui blockchain.
+        <section id="trust" className="trust-section">
+          <div>
+            <p className="eyebrow">
+              <Waypoints size={16} /> Nguyên tắc oracle
+            </p>
+            <h2>
+              Blockchain bảo vệ lịch sử, không biến khai báo thành sự thật
+            </h2>
+            <p>
+              Mỗi kết luận luôn truy ngược được về claim, bằng chứng, nguồn,
+              người xác minh, phạm vi xác nhận, hash và chữ ký.
+            </p>
+          </div>
+          <ol>
+            <li>Claim</li>
+            <li>Evidence</li>
+            <li>Independent verification</li>
+            <li>Attestation</li>
+            <li>Hash + signature</li>
+            <li>Blockchain integrity</li>
+          </ol>
+        </section>
+      </main>
+      <footer className="public-footer">
+        <span>© 2026 GreenTrace</span>
+        <p>
+          Không xác nhận quyền sở hữu pháp lý, không định giá, không chấm điểm
+          tín dụng và không đưa ra khuyến nghị đầu tư.
         </p>
-        <div className="flex justify-center gap-4 flex-wrap">
-          <a
-            href="/farmer/add-product"
-            className="bg-green-700 text-white px-8 py-3 rounded-full font-medium shadow hover:bg-green-800 transition-all"
-          >
-            Tạo NFT
-          </a>
-          <a
-            href="/shop"
-            className="bg-white text-green-700 px-8 py-3 rounded-full font-medium shadow hover:bg-green-100 transition-all"
-          >
-            Xem NFT trên sàn
-          </a>
-        </div>
-      </motion.section>
-
-      <Footer />
+      </footer>
     </div>
   );
-};
-
-export default Home;
+}

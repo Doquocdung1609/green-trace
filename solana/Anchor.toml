@@ -1,0 +1,19 @@
+[toolchain]
+anchor_version = "0.31.1"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+green_trace_registry = "6MdPz4cbp3YFU7G1RVzGga287T1Dv7gfYHXr7Ud1G9wo"
+
+[programs.devnet]
+green_trace_registry = "6MdPz4cbp3YFU7G1RVzGga287T1Dv7gfYHXr7Ud1G9wo"
+
+[provider]
+cluster = "devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "npx mocha --timeout 1000000 tests/**/*.ts"

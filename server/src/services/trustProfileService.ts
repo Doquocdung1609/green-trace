@@ -1,0 +1,37 @@
+import { prisma } from "../db/prisma.js";
+import { calculateReadiness } from "./readinessEngine.js";
+import { calculateTrust } from "./trustEngine.js";
+
+export async function recalculateTrust(assetId: string) {
+  const asset = await prisma.asset.findUnique({
+    where: { id: assetId },
+    include: { evidence: true, attestations: true, lifecycleEvents: true },
+  });
+  if (!asset) throw new Error("Không tìm thấy tài sản");
+  const profile = calculateTrust(
+    asset,
+    asset.evidence,
+    asset.attestations,
+    asset.lifecycleEvents,
+  );
+  const readiness = calculateReadiness(profile, asset.evidence);
+  const { warnings, ...scores } = profile;
+  const saved = await prisma.trustProfile.upsert({
+    where: { assetId },
+    create: {
+      assetId,
+      ...scores,
+      warningsJson: JSON.stringify(warnings),
+    },
+    update: {
+      ...scores,
+      warningsJson: JSON.stringify(warnings),
+      calculatedAt: new Date(),
+    },
+  });
+  await prisma.asset.update({
+    where: { id: assetId },
+    data: { passportStatus: readiness },
+  });
+  return { ...saved, warnings, readiness };
+}

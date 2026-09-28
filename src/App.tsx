@@ -1,83 +1,80 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from './contexts/AuthContext';
-import { SuiWalletContextProvider } from './contexts/SuiWalletContext';
-import ProtectedRoute from './components/ui/ProtectedRoute';
-import Home from './pages/public/Home';
-import About from './pages/public/About';
-import Contact from './pages/public/Contact';
-import Login from './pages/auth/Login';
-import Register from './pages/auth/Register';
-import FarmerDashboard from './pages/farmer/Dashboard';
-import FarmerProducts from './pages/farmer/Products';
-import FarmerAddProduct from './pages/farmer/AddProductSui';
-import FarmerProfile from './pages/farmer/Profile';
-import UpdateNFT from './pages/farmer/UpdateNFT';
-import Shop from './pages/customer/Shop';
-import ProductDetail from './pages/customer/ProductDetail';
-import Cart from './pages/customer/Cart';                
-import Checkout from './pages/customer/Checkout';       
-import Orders from './pages/customer/Orders';   
-import OrdersFarmer from './pages/farmer/Orders';         
-import CustomerProfile from './pages/customer/Profile';
-import { Toaster } from './components/ui/toaster';
-import CustomerLayout from './pages/customer/CustomerLayout';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { AuthProvider } from "./contexts/AuthProvider";
+import { AppShell } from "./layouts/AppShell";
+import { AdminDashboard } from "./pages/admin/AdminDashboard";
+import { Login } from "./pages/auth/Login";
+import { Register } from "./pages/auth/Register";
+import { AssetEvidence } from "./pages/operator/AssetEvidence";
+import { CreateAsset } from "./pages/operator/CreateAsset";
+import { OperatorDashboard } from "./pages/operator/OperatorDashboard";
+import { AssetPassport } from "./pages/passport/AssetPassport";
+import { Home } from "./pages/public/Home";
+import { ReviewerDashboard } from "./pages/reviewer/ReviewerDashboard";
+import { VerificationRequestDetail } from "./pages/verifier/VerificationRequestDetail";
+import { VerificationRequests } from "./pages/verifier/VerificationRequests";
+import { VerifierDashboard } from "./pages/verifier/VerifierDashboard";
+import { SolanaProvider } from "./solana/SolanaProvider";
 
-import EditProduct from './pages/farmer/EditProduct';
-import { WalletConnector } from './components/WalletConnector';
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: 1, staleTime: 20_000 } },
+});
 
-const queryClient = new QueryClient();
-
-function App() {
+export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <SuiWalletContextProvider>
-          <BrowserRouter>
-            <WalletConnector />
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<Home />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/contact" element={<Contact />} />
-
-              {/* Auth Routes */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-
-              {/* Farmer Routes */}
-              <Route element={<ProtectedRoute role="farmer" />}>
-                <Route path="/farmer/dashboard" element={<FarmerDashboard />} />
-                <Route path="/farmer/products" element={<FarmerProducts />} />
-                <Route path="/farmer/add-product" element={<FarmerAddProduct />} />
-                <Route path="/farmer/profile" element={<FarmerProfile />} />
-                <Route path="/farmer/edit-product/:id" element={<EditProduct />} />
-                <Route path="/farmer/update-nft" element={<UpdateNFT />} />
-                <Route path="/farmer/orders" element={<OrdersFarmer />} />
-              </Route>
-
-              {/* Customer Routes - tất cả đều nằm trong CustomerLayout */}
-              <Route element={<ProtectedRoute role="customer" />}>
-                <Route element={<CustomerLayout />}>
-                  <Route path="/shop" element={<Shop />} />
-                  <Route path="/product/:id" element={<ProductDetail />} />
-                  
-                  {/* Các route mới cho nhà đầu tư */}
-                  <Route path="/cart" element={<Cart />} />
-                  <Route path="/checkout" element={<Checkout />} />
-                  <Route path="/orders" element={<Orders />} />
-                  
-                  <Route path="/profile" element={<CustomerProfile />} />
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <SolanaProvider>
+          <AuthProvider>
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route
+                  path="/passport/:assetCode"
+                  element={<AssetPassport />}
+                />
+                <Route element={<AppShell />}>
+                  <Route element={<ProtectedRoute roles={["operator"]} />}>
+                    <Route path="/operator" element={<OperatorDashboard />} />
+                    <Route
+                      path="/operator/assets/new"
+                      element={<CreateAsset />}
+                    />
+                    <Route
+                      path="/operator/assets/:id/evidence"
+                      element={<AssetEvidence />}
+                    />
+                  </Route>
+                  <Route element={<ProtectedRoute roles={["verifier"]} />}>
+                    <Route path="/verifier" element={<VerifierDashboard />} />
+                    <Route
+                      path="/verifier/requests"
+                      element={<VerificationRequests />}
+                    />
+                    <Route
+                      path="/verifier/requests/:id"
+                      element={<VerificationRequestDetail />}
+                    />
+                  </Route>
+                  <Route
+                    element={<ProtectedRoute roles={["reviewer", "admin"]} />}
+                  >
+                    <Route path="/reviewer" element={<ReviewerDashboard />} />
+                  </Route>
+                  <Route element={<ProtectedRoute roles={["admin"]} />}>
+                    <Route path="/admin" element={<AdminDashboard />} />
+                  </Route>
                 </Route>
-              </Route>
-
-            </Routes>
-          </BrowserRouter>
-          <Toaster />
-        </SuiWalletContextProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </BrowserRouter>
+          </AuthProvider>
+        </SolanaProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
-
-export default App;

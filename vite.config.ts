@@ -1,27 +1,32 @@
 // vite.config.ts
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { nodePolyfills } from 'vite-plugin-node-polyfills';
 
-export default defineConfig({
-  plugins: [
-    react(),
-    nodePolyfills({
-      globals: {
-        Buffer: true, // Polyfill Buffer for both dev and build
-        global: true, // Polyfill global for both dev and build
-        process: true, // Polyfill process for both dev and build
-      },
-      protocolImports: true, // Optional: polyfill `node:` protocol imports
-    }),
-  ],
-  define: {
-    global: 'globalThis', // Polyfill `global` with `globalThis`
-  },
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), 'VITE_');
+  return {
+  plugins: [react()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    proxy: {
+      '/api': env.VITE_API_PROXY_TARGET,
+      '/storage': env.VITE_API_PROXY_TARGET,
+    },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          solana: ['@solana/web3.js', '@solana/wallet-adapter-react'],
+          react: ['react', 'react-dom', 'react-router-dom'],
+        },
+      },
+    },
+  },
+  };
 });
