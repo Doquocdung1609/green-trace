@@ -66,7 +66,7 @@ async function passportSnapshot(assetId: string) {
       occurredAt: e.occurredAt,
     })),
     trust: { totalScore: profile.totalScore, warnings: profile.warnings },
-    readinessStatus: profile.readiness,
+    readinessStatus: profile.readinessProfiles.find((item) => item.purpose === "FINANCIAL_REVIEW")?.status ?? "NOT_READY",
   };
 }
 

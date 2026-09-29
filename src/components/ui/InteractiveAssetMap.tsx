@@ -326,8 +326,10 @@ export function InteractiveAssetMap({
               role="option"
               aria-selected={activeSuggestion === index}
               className={activeSuggestion === index ? "active" : ""}
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => chooseSuggestion(suggestion)}
+              onMouseDown={(event) => {
+                event.preventDefault();
+                chooseSuggestion(suggestion);
+              }}
               onMouseEnter={() => setActiveSuggestion(index)}
             ><MapPin size={16} aria-hidden="true" /><span>{getSuggestionLabel(suggestion)}</span></button>
           </li>)}

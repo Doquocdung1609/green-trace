@@ -93,7 +93,7 @@ adminRouter.get(
   "/admin/policy",
   requireAuth,
   requireRole("admin"),
-  (_req, res) =>
+  async (_req, res) =>
     res.json({
       version: "2026.09",
       evidenceTypes,
@@ -101,5 +101,7 @@ adminRouter.get(
       lifecycleStages: stages,
       lifecycleTransitions,
       editingMode: "SOURCE_REVIEW_REQUIRED",
+      verificationPolicies: await prisma.verificationPolicy.findMany({ orderBy: { evidenceType: "asc" } }),
+      assetTemplates: await prisma.assetTemplate.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
     }),
 );

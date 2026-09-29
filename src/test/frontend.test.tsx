@@ -20,7 +20,7 @@ describe('frontend role routes and trust rendering', () => {
   });
 
   it('renders the explainable trust score and disclaimer', async () => {
-    const asset = { id:'a',assetCode:'GT-NL-2026-000128',displayName:'Sâm Ngọc Linh',assetType:'Dược liệu',species:'Panax vietnamensis',custodianId:'u',organizationId:'o',description:'Demo',region:'Nam Trà My',plantedAt:'2021-01-01',currentStage:'INSPECTED',passportStatus:'NEEDS_REVIEW',createdAt:'2026-01-01',updatedAt:'2026-01-01',trustProfile:{identityScore:20,evidenceScore:17,verificationScore:21,freshnessScore:13,consistencyScore:11,totalScore:82,warningCount:1,warnings:[{code:'CERT_EXPIRING',severity:'MEDIUM',message:'Chứng nhận sắp hết hạn'}],calculatedAt:'2026-01-01'},passports:[{id:'p',assetId:'a',version:1,passportHash:'a'.repeat(64),readinessStatus:'NEEDS_REVIEW',generatedAt:'2026-01-01'}],evidence:[],attestations:[],lifecycleEvents:[],blockchainTransactions:[]} as Asset;
+    const asset = { id:'a',assetCode:'GT-NL-2026-000128',displayName:'Sâm Ngọc Linh',assetType:'Dược liệu',assetLevel:'LOT',species:'Panax vietnamensis',plantedAtConfidence:'DOCUMENTED',ageBasis:'DOCUMENTED',transactionStage:'NOT_LISTED',custodianId:'u',organizationId:'o',description:'Demo',region:'Nam Trà My',plantedAt:'2021-01-01',currentStage:'INSPECTED',passportStatus:'NEEDS_SUPPLEMENT',createdAt:'2026-01-01',updatedAt:'2026-01-01',trustProfile:{identityScore:20,evidenceScore:17,verificationScore:21,freshnessScore:13,consistencyScore:11,totalScore:82,warningCount:1,warnings:[{code:'CERT_EXPIRING',severity:'MEDIUM',message:'Chứng nhận sắp hết hạn'}],calculatedAt:'2026-01-01'},passports:[{id:'p',assetId:'a',version:1,passportHash:'a'.repeat(64),readinessStatus:'NEEDS_SUPPLEMENT',generatedAt:'2026-01-01'}],evidence:[],attestations:[],lifecycleEvents:[],blockchainTransactions:[]} as Asset;
     vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,status:200,json:async()=>({asset})}));
     const client = new QueryClient({defaultOptions:{queries:{retry:false}}});
     render(<QueryClientProvider client={client}><MemoryRouter initialEntries={['/passport/GT-NL-2026-000128']}><Routes><Route path="/passport/:assetCode" element={<AssetPassport/>}/></Routes></MemoryRouter></QueryClientProvider>);
@@ -34,4 +34,3 @@ describe('frontend role routes and trust rendering', () => {
     await waitFor(() => expect(screen.getByText('Không tìm thấy hộ chiếu')).toBeInTheDocument());
   });
 });
-

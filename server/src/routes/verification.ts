@@ -17,25 +17,58 @@ import {
 export const verificationRouter = Router();
 const requestInclude = {
   asset: true,
-  evidence: { include: { attestations: true } },
-  requester: { include: { organization: true } },
-  requestedVerifier: true,
+  evidence: { include: { attestations: true, submittedByUser: { select: { id: true, fullName: true, organizationId: true } } } },
+  requester: { select: { id: true, fullName: true, email: true, organization: true } },
+  requestedVerifier: { select: { id: true, fullName: true } },
+  policy: true,
 } as const;
+
+async function checkEligibility(
+  request: {
+    requestedScope: string;
+    requiredVerifierCategory: string | null;
+    evidence: { submittedBy: string; submittedByUser: { organizationId: string | null } };
+    policy: { requiredScope: string | null; independentOrganizationRequired: boolean; requiredVerifierCategory: string | null } | null;
+  },
+  user: { id: string; organizationId: string | null },
+  scope: string,
+) {
+  if (request.evidence.submittedBy === user.id)
+    return "Không được tự xác minh bằng chứng do chính mình gửi";
+  const expectedScope = request.policy?.requiredScope || request.requestedScope;
+  if (expectedScope && scope !== expectedScope)
+    return `Policy yêu cầu phạm vi ${expectedScope}.`;
+  if (
+    request.policy?.independentOrganizationRequired &&
+    user.organizationId &&
+    user.organizationId === request.evidence.submittedByUser.organizationId
+  )
+    return "Policy yêu cầu người xác minh thuộc tổ chức độc lập.";
+  const requiredCategory = request.policy?.requiredVerifierCategory || request.requiredVerifierCategory;
+  if (requiredCategory) {
+    const organization = user.organizationId
+      ? await prisma.organization.findUnique({ where: { id: user.organizationId } })
+      : null;
+    if (organization?.verifierCategory !== requiredCategory)
+      return `Policy yêu cầu verifier category ${requiredCategory}.`;
+  }
+  return null;
+}
 
 verificationRouter.get(
   "/verification-requests",
   requireAuth,
   requireRole("verifier", "admin"),
   async (req, res) => {
-    const where =
-      req.user!.role === "verifier"
-        ? {
-            OR: [
-              { requestedVerifierId: null },
-              { requestedVerifierId: req.user!.id },
-            ],
-          }
-        : {};
+    const organization = req.user!.organizationId
+      ? await prisma.organization.findUnique({ where: { id: req.user!.organizationId } })
+      : null;
+    const where = req.user!.role === "verifier" ? {
+      AND: [
+        { OR: [{ requestedVerifierId: null }, { requestedVerifierId: req.user!.id }] },
+        { OR: [{ requiredVerifierCategory: null }, { requiredVerifierCategory: organization?.verifierCategory || "__none__" }] },
+      ],
+    } : {};
     res.json({
       requests: await prisma.verificationRequest.findMany({
         where,
@@ -75,16 +108,14 @@ verificationRouter.post(
   async (req, res) => {
     const request = await prisma.verificationRequest.findUnique({
       where: { id: String(req.params.id) },
-      include: { evidence: true },
+      include: { evidence: { include: { submittedByUser: { select: { id: true, organizationId: true } } } }, policy: true },
     });
     if (!request || request.status !== "PENDING")
       return res
         .status(409)
         .json({ error: "Yêu cầu không còn ở trạng thái chờ" });
-    if (request.evidence.submittedBy === req.user!.id)
-      return res
-        .status(409)
-        .json({ error: "Không được tự xác minh bằng chứng do chính mình gửi" });
+    const eligibilityError = await checkEligibility(request, req.user!, req.body.scope);
+    if (eligibilityError) return res.status(409).json({ error: eligibilityError });
     const payload = {
       version: 1,
       requestId: request.id,
@@ -225,16 +256,14 @@ verificationRouter.post(
   async (req, res) => {
     const request = await prisma.verificationRequest.findUnique({
       where: { id: String(req.params.id) },
-      include: { evidence: true },
+      include: { evidence: { include: { submittedByUser: { select: { id: true, organizationId: true } } } }, policy: true },
     });
     if (!request || request.status !== "PENDING")
       return res
         .status(409)
         .json({ error: "Yêu cầu không còn ở trạng thái chờ" });
-    if (request.evidence.submittedBy === req.user!.id)
-      return res
-        .status(409)
-        .json({ error: "Không được tự xác minh bằng chứng do chính mình gửi" });
+    const eligibilityError = await checkEligibility(request, req.user!, req.body.scope);
+    if (eligibilityError) return res.status(409).json({ error: eligibilityError });
     if (!req.body.txSignature || !req.body.payloadHash)
       return res
         .status(400)
@@ -281,7 +310,9 @@ verificationRouter.post(
           payloadHash: req.body.payloadHash,
           txSignature: req.body.txSignature,
           chainStatus: "CONFIRMED",
-          expiresAt: new Date(Date.now() + 365 * 86400000),
+          expiresAt: request.policy?.expiresAfterDays
+            ? new Date(Date.now() + request.policy.expiresAfterDays * 86400000)
+            : undefined,
         },
       });
       await tx.verificationRequest.update({
@@ -324,11 +355,14 @@ verificationRouter.post(
   async (req, res) => {
     const request = await prisma.verificationRequest.findUnique({
       where: { id: String(req.params.id) },
+      include: { evidence: { include: { submittedByUser: { select: { id: true, organizationId: true } } } }, policy: true },
     });
     if (!request || request.status !== "PENDING")
       return res
         .status(409)
         .json({ error: "Yêu cầu không còn ở trạng thái chờ" });
+    const eligibilityError = await checkEligibility(request, req.user!, req.body.scope);
+    if (eligibilityError) return res.status(409).json({ error: eligibilityError });
     await prisma.$transaction([
       prisma.verificationRequest.update({
         where: { id: request.id },

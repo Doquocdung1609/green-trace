@@ -35,8 +35,9 @@ const navByRole: Record<
     },
     { to: "/verifier/attestations", label: "Attestation đã ký", icon: FileSignature },
   ],
-  reviewer: [{ to: "/reviewer", label: "Tra cứu hộ chiếu", icon: Search }],
+  reviewer: [{ to: "/reviewer", label: "Hồ sơ thẩm định", icon: Search }],
   admin: [{ to: "/admin", label: "Quản trị", icon: Settings }],
+  buyer: [{ to: "/my-assets", label: "Tài sản của tôi", icon: Sprout }],
 };
 
 export function AppShell() {

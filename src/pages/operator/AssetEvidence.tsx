@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   RefreshCw,
   ShieldCheck,
+  Sprout,
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
@@ -29,16 +30,16 @@ import { config } from "../../lib/config";
 import { api } from "../../services/apiClient";
 import { getSolanaExplorerUrl } from "../../solana/explorer";
 import { useSolanaWallet } from "../../solana/useSolanaWallet";
+import { AssetProductSections, type ProductTab } from "../../components/asset/AssetProductSections";
 import {
   stageLabels,
   type Asset,
   type Evidence,
   type EvidenceType,
   type LifecycleStage,
-  type VerificationScope,
 } from "../../types/domain";
 
-type WorkspaceTab = "overview" | "evidence" | "requests" | "lifecycle" | "warnings" | "passport";
+type WorkspaceTab = "overview" | "evidence" | "requests" | "lifecycle" | "warnings" | "passport" | ProductTab;
 
 export function AssetEvidence() {
   const { id = "" } = useParams();
@@ -50,7 +51,6 @@ export function AssetEvidence() {
   const [evidenceType, setEvidenceType] = useState<EvidenceType>("PHOTO");
   const [stageTo, setStageTo] = useState<LifecycleStage>("PLANTED_VERIFIED");
   const [evidenceBusy, setEvidenceBusy] = useState(false);
-  const [requestingId, setRequestingId] = useState("");
   const [lifecycleBusy, setLifecycleBusy] = useState(false);
   const [confirmPassport, setConfirmPassport] = useState(false);
   const [passportBusy, setPassportBusy] = useState(false);
@@ -104,22 +104,6 @@ export function AssetEvidence() {
       setError(reason instanceof Error ? reason.message : "Không thể tải bằng chứng");
     } finally {
       setEvidenceBusy(false);
-    }
-  };
-
-  const requestVerification = async (evidenceId: string, scope: VerificationScope) => {
-    try {
-      setError("");
-      setRequestingId(evidenceId);
-      await api.post(`/evidence/${evidenceId}/request-verification`, { requestedScope: scope });
-      await client.invalidateQueries({ queryKey: ["asset", id] });
-      notify("Đã gửi yêu cầu xác minh");
-    } catch (reason) {
-      const message = reason instanceof Error ? reason.message : "Không thể gửi yêu cầu xác minh";
-      setError(message);
-      notify("Không thể gửi yêu cầu", { description: message, tone: "error" });
-    } finally {
-      setRequestingId("");
     }
   };
 
@@ -194,13 +178,17 @@ export function AssetEvidence() {
         { value: "evidence", label: "Kho bằng chứng", icon: FileCheck2 },
         { value: "requests", label: "Yêu cầu xác minh", icon: ClipboardCheck },
         { value: "lifecycle", label: "Vòng đời", icon: History },
+        { value: "biological", label: "Sinh học", icon: Sprout },
+        { value: "rights", label: "Quyền & lưu ký", icon: ShieldCheck },
+        { value: "commerce", label: "Giao dịch", icon: ClipboardCheck },
+        { value: "readiness", label: "Risk & Readiness", icon: AlertTriangle },
         { value: "warnings", label: "Cảnh báo", icon: AlertTriangle },
         { value: "passport", label: "Hộ chiếu & blockchain", icon: ShieldCheck },
       ]} />
 
       {tab === "overview" ? <div className="two-columns">
         <section className="panel"><SectionHeader title="Định danh tài sản" description="Thông tin nền của hồ sơ đang được quản lý." /><dl className="detail-list"><dt>Mã tài sản</dt><dd>{asset.assetCode}</dd><dt>Loại tài sản</dt><dd>{asset.assetType}</dd><dt>Loài / giống</dt><dd>{asset.species}</dd><dt>Khu vực</dt><dd>{asset.region}</dd><dt>Ngày tạo lập</dt><dd>{new Date(asset.plantedAt).toLocaleDateString("vi-VN")}</dd><dt>Chủ thể quản lý</dt><dd>{asset.organization?.name ?? "Chưa gán"}</dd></dl></section>
-        <section className="panel"><SectionHeader title="Tình trạng hồ sơ" description="Các số liệu được tính từ dữ liệu thật hiện có." /><dl className="detail-list"><dt>Bằng chứng</dt><dd>{asset.evidence?.length ?? 0}</dd><dt>Yêu cầu xác minh</dt><dd>{asset.verificationRequests?.length ?? 0}</dd><dt>Attestation</dt><dd>{asset.attestations?.length ?? 0}</dd><dt>Sự kiện vòng đời</dt><dd>{asset.lifecycleEvents?.length ?? 0}</dd><dt>Cảnh báo</dt><dd>{asset.trustProfile?.warningCount ?? 0}</dd></dl></section>
+        <section className="panel"><SectionHeader title="Tình trạng hồ sơ" description="Các số liệu được tính từ dữ liệu thật hiện có." /><dl className="detail-list"><dt>Bằng chứng</dt><dd>{asset.evidence?.length ?? 0}</dd><dt>Yêu cầu xác minh</dt><dd>{asset.verificationRequests?.length ?? 0}</dd><dt>Attestation</dt><dd>{asset.attestations?.length ?? 0}</dd><dt>Sự kiện vòng đời</dt><dd>{asset.lifecycleEvents?.length ?? 0}</dd><dt>Cảnh báo</dt><dd>{asset.trustProfile?.warningCount ?? 0}</dd><dt>Định giá</dt><dd>{asset.valuations?.some((item) => item.verificationStatus === "APPROVED") ? "Có định giá bên thứ ba đã xác minh" : "Chưa có định giá được xác minh"}</dd></dl></section>
       </div> : null}
 
       {tab === "evidence" ? <div className="two-columns">
@@ -210,14 +198,15 @@ export function AssetEvidence() {
             <div><strong>{item.title}</strong><span>{item.type} · {item.source}</span></div><StatusPill value={item.verificationStatus} />
             <dl><dt>Quan sát</dt><dd>{new Date(item.observedAt).toLocaleDateString("vi-VN")}</dd><dt>Hash</dt><dd><code>{item.contentHash.slice(0, 16)}…</code></dd><dt>Quyền xem</dt><dd>{item.visibility}</dd></dl>
             <div className="evidence-actions"><a className="text-link" href={`${config.apiBaseUrl}/evidence/${item.id}/file`} target="_blank" rel="noreferrer"><Eye size={14} /> Xem tệp</a><button className="text-link" type="button" onClick={() => void copyHash(item.contentHash)}><Copy size={14} /> Sao chép hash</button>{item.attestations?.map((attestation) => attestation.txSignature ? <a key={attestation.id} href={getSolanaExplorerUrl(attestation.txSignature)} target="_blank" rel="noreferrer">On-chain <ExternalLink size={14} /></a> : null)}</div>
-            {item.verificationStatus === "PENDING" ? <button className="button secondary compact" type="button" disabled={requestingId === item.id} onClick={() => void requestVerification(item.id, item.type === "GEO_LOCATION" ? "LOCATION" : item.type === "CERTIFICATE" ? "CERTIFICATE_VALIDITY" : item.type === "LAB_RESULT" ? "LAB_RESULT" : item.type === "IOT_READING" ? "IOT_SOURCE" : "EXISTENCE")}>{requestingId === item.id ? "Đang gửi…" : "Yêu cầu xác minh"}</button> : null}
+            {item.verificationStatus === "PENDING" ? <p className="field-help">Hệ thống đã tự tạo yêu cầu xác minh theo policy.</p> : <p className="field-help">Không cần verifier hoặc đã có quyết định.</p>}
           </article>)}</div> : <EmptyState title="Chưa có bằng chứng" description="Thêm ảnh, tài liệu, dữ liệu IoT hoặc nhật ký để làm đầy hồ sơ." />}
         </section>
         <form className="panel compact-form" onSubmit={submitEvidence}>
           <SectionHeader title="Thêm bằng chứng" description="Tệp sẽ được băm SHA-256 sau khi tải lên." icon={FilePlus2} />
-          <label>Loại<select name="type" value={evidenceType} onChange={(event) => setEvidenceType(event.target.value as EvidenceType)}><option>PHOTO</option><option>GEO_LOCATION</option><option>IOT_READING</option><option>FARM_LOG</option><option>CERTIFICATE</option><option>INSPECTION</option><option>LAB_RESULT</option><option>OTHER</option></select></label>
+          <label>Loại<select name="type" value={evidenceType} onChange={(event) => setEvidenceType(event.target.value as EvidenceType)}><option>PHOTO</option><option>PHOTO_CARE</option><option>GEO_LOCATION</option><option>IOT_READING</option><option>FARM_LOG</option><option>CARE_NOTE</option><option>ENVIRONMENT_READING</option><option>CERTIFICATE</option><option>INSPECTION</option><option>LAB_RESULT</option><option>PROPAGATION_SOURCE</option><option>AGE_DOCUMENT</option><option>RIGHTS_DOCUMENT</option><option>CUSTODY_DOCUMENT</option><option>CARE_AGREEMENT</option><option>HARVEST_RECORD</option><option>TRANSACTION_DOCUMENT</option><option>OTHER</option></select></label>
           <label>Tiêu đề<input name="title" required /></label>
           <label>Nguồn<input name="source" placeholder="Cán bộ hiện trường / thiết bị" required /></label>
+          <label>Kiểu nguồn<select name="sourceType" defaultValue="OPERATOR"><option>OPERATOR</option><option>DEVICE</option><option>THIRD_PARTY</option><option>DOCUMENT</option><option>SYSTEM</option></select></label>
           <label>Thời điểm quan sát<input name="observedAt" type="datetime-local" required /></label>
           <label>Quyền xem<select name="visibility" defaultValue="PRIVATE"><option>PRIVATE</option><option>PARTNER</option><option>PUBLIC</option></select></label>
           <label>Mô tả<textarea name="description" rows={3} maxLength={3000} /></label>
@@ -231,11 +220,12 @@ export function AssetEvidence() {
 
       {tab === "requests" ? <section className="panel"><SectionHeader title="Yêu cầu xác minh" description="Theo dõi phạm vi và trạng thái của các yêu cầu đã gửi." />{asset.verificationRequests?.length ? <div className="passport-records">{asset.verificationRequests.map((request) => { const evidence = asset.evidence?.find((item) => item.id === request.evidenceId); return <article key={request.id}><div><strong>{evidence?.title ?? "Bằng chứng"}</strong><span>{request.requestedScope} · {new Date(request.createdAt).toLocaleString("vi-VN")}</span></div><StatusPill value={request.status} />{request.requester?.fullName ? <small>Người gửi: {request.requester.fullName}</small> : null}</article>; })}</div> : <EmptyState title="Chưa có yêu cầu xác minh" description="Gửi yêu cầu từ một bằng chứng đang chờ để bắt đầu quy trình." action={<button className="button secondary" type="button" onClick={() => setTab("evidence")}>Mở kho bằng chứng</button>} />}</section> : null}
 
-      {tab === "lifecycle" ? <div className="two-columns"><section className="panel"><SectionHeader title="Lịch sử vòng đời" description="Mỗi sự kiện gắn với bằng chứng và người duyệt." />{asset.lifecycleEvents?.length ? <ol className="timeline">{asset.lifecycleEvents.map((event) => <li key={event.id}><time>{new Date(event.occurredAt).toLocaleDateString("vi-VN")}</time><div><strong>{stageLabels[event.stageTo]}</strong><p>{event.eventType}</p></div></li>)}</ol> : <EmptyState title="Chưa có sự kiện vòng đời" description="Sự kiện mới sẽ xuất hiện sau khi transition hợp lệ được ghi nhận." />}</section><section className="panel compact-form"><SectionHeader title="Ghi sự kiện vòng đời" description="Transition sai logic hoặc thiếu bằng chứng xác minh sẽ bị chặn." /><label>Chuyển sang<select value={stageTo} onChange={(event) => setStageTo(event.target.value as LifecycleStage)}><option>PLANTED_VERIFIED</option><option>GROWING</option><option>INSPECTED</option><option>MATURE</option><option>HARVEST_READY</option><option>HARVESTED</option><option>TRANSFERRED</option><option>ARCHIVED</option></select></label><button className="button secondary" type="button" disabled={lifecycleBusy} onClick={() => void transition()}>{lifecycleBusy ? "Đang ghi…" : "Ghi sự kiện"}</button></section></div> : null}
+      {tab === "lifecycle" ? <div className="two-columns"><section className="panel"><SectionHeader title="Lịch sử vòng đời sinh học" description="Giao dịch quyền không làm thay đổi vòng đời sinh học." />{asset.lifecycleEvents?.length ? <ol className="timeline">{asset.lifecycleEvents.map((event) => <li key={event.id}><time>{new Date(event.occurredAt).toLocaleDateString("vi-VN")}</time><div><strong>{stageLabels[event.stageTo]}</strong><p>{event.eventType}</p></div></li>)}</ol> : <EmptyState title="Chưa có sự kiện vòng đời" description="Sự kiện mới sẽ xuất hiện sau khi transition hợp lệ được ghi nhận." />}</section><section className="panel compact-form"><SectionHeader title="Ghi sự kiện vòng đời" description="Transition sai logic hoặc thiếu bằng chứng xác minh sẽ bị chặn." /><label>Chuyển sang<select value={stageTo} onChange={(event) => setStageTo(event.target.value as LifecycleStage)}><option>PLANTED_VERIFIED</option><option>GROWING</option><option>INSPECTED</option><option>MATURE</option><option>HARVEST_READY</option><option>HARVESTED</option><option>ARCHIVED</option></select></label><button className="button secondary" type="button" disabled={lifecycleBusy} onClick={() => void transition()}>{lifecycleBusy ? "Đang ghi…" : "Ghi sự kiện"}</button></section></div> : null}
 
       {tab === "warnings" ? <section className="panel"><SectionHeader title="Cảnh báo dữ liệu" description="Cảnh báo được suy ra từ hồ sơ hiện tại; không phải đánh giá tài chính." />{asset.trustProfile?.warnings.length ? <div className="risk-list">{asset.trustProfile.warnings.map((warning) => <article className={`warning warning-${warning.severity.toLowerCase()}`} key={warning.code}><AlertTriangle /><div><strong>{warning.message}</strong><span>{warning.code} · Mức {warning.severity}</span></div></article>)}</div> : <EmptyState title="Không có cảnh báo đang mở" description="Tiếp tục cập nhật bằng chứng để duy trì độ mới và tính nhất quán của hồ sơ." />}</section> : null}
 
       {tab === "passport" ? <section className="panel"><SectionHeader title="Hộ chiếu & bản ghi toàn vẹn" description="Tạo phiên bản mới từ trạng thái hồ sơ hiện tại và ký hash bằng ví Phantom." action={<SolanaWalletButton />} /><div className="inline-note"><ShieldCheck size={19} /><span>Blockchain chỉ bảo vệ hash, chữ ký và lịch sử trạng thái; không xác nhận tài sản ngoài đời hoặc quyền sở hữu pháp lý.</span></div><div className="card-actions"><button className="button primary" type="button" onClick={() => setConfirmPassport(true)}>Tạo phiên bản hộ chiếu</button><Link className="button secondary" to={`/passport/${asset.assetCode}`}>Xem hộ chiếu công khai</Link></div></section> : null}
+      {(["biological", "rights", "commerce", "readiness"] as ProductTab[]).includes(tab as ProductTab) ? <AssetProductSections asset={asset} tab={tab as ProductTab} /> : null}
       {error ? <p className="form-error" role="alert">{error}</p> : null}
       <ConfirmDialog open={confirmPassport} title="Tạo phiên bản hộ chiếu mới?" description="GreenTrace sẽ tạo hash từ hồ sơ hiện tại và yêu cầu ví Phantom ký giao dịch Solana. Hành động này không thể sửa lịch sử phiên bản đã ghi." confirmLabel="Tiếp tục ký" busy={passportBusy} onCancel={() => setConfirmPassport(false)} onConfirm={() => void generatePassport()} />
     </div>

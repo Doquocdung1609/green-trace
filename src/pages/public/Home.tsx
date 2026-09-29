@@ -127,7 +127,7 @@ export function Home() {
                   <strong>{sample?.displayName || "Hộ chiếu tài sản mẫu"}</strong>
                   <span className="muted">{sample?.assetCode || "Đang tải dữ liệu…"}</span>
                 </div>
-                <span className="verified-dot" aria-label={sample?.passportStatus === "READY_FOR_FINANCIAL_REVIEW" ? "Sẵn sàng xem xét" : "Hồ sơ đang được kiểm tra"}>{sample?.passportStatus === "READY_FOR_FINANCIAL_REVIEW" ? "✓" : "•"}</span>
+                <span className="verified-dot" aria-label={sample?.passportStatus === "READY_FOR_REVIEW" ? "Sẵn sàng xem xét" : "Hồ sơ đang được kiểm tra"}>{sample?.passportStatus === "READY_FOR_REVIEW" ? "✓" : "•"}</span>
               </div>
               {trust ? <TrustScore score={trust.totalScore} /> : <div className="preview-score-loading" role="status">Đang tải điểm tin cậy…</div>}
               <div className="preview-row">

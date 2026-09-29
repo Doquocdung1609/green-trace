@@ -4,6 +4,7 @@ import type {
   Evidence,
   LifecycleEvent,
 } from "@prisma/client";
+import { isImportantEvidence } from "./verificationPolicyEngine.js";
 
 export interface Warning {
   code: string;
@@ -98,9 +99,22 @@ export function detectAnomalies(
       severity: "HIGH",
       message: "Hồ sơ chưa có chứng nhận bắt buộc.",
     });
+  const importantEvidenceIds = new Set(
+    evidence.filter((item) => isImportantEvidence(item.type)).map((item) => item.id),
+  );
+  const activeVerifiedIds = new Set(
+    attestations
+      .filter(
+        (item) =>
+          item.decision === "APPROVED" &&
+          !item.revokedAt &&
+          (!item.expiresAt || item.expiresAt >= now),
+      )
+      .map((item) => item.evidenceId),
+  );
   if (
-    evidence.length > 0 &&
-    !attestations.some((a) => a.decision === "APPROVED" && !a.revokedAt)
+    importantEvidenceIds.size > 0 &&
+    [...importantEvidenceIds].some((id) => !activeVerifiedIds.has(id))
   )
     warnings.push({
       code: "INDEPENDENT_VERIFICATION_MISSING",

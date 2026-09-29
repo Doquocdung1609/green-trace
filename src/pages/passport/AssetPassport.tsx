@@ -25,14 +25,18 @@ import { api } from "../../services/apiClient";
 import { getSolanaExplorerUrl } from "../../solana/explorer";
 import { stageLabels, type Asset } from "../../types/domain";
 
-type Tab = "Tổng quan" | "Bằng chứng" | "Xác minh" | "Vòng đời" | "Rủi ro dữ liệu" | "Lịch sử blockchain";
+type Tab = "Tổng quan" | "Sinh học" | "Bằng chứng" | "Xác minh" | "Quyền & lưu ký" | "Vòng đời" | "Giao dịch" | "Risk" | "Readiness" | "Blockchain";
 const tabItems: TabItem<Tab>[] = [
   { value: "Tổng quan", label: "Tổng quan", icon: Fingerprint },
+  { value: "Sinh học", label: "Sinh học", icon: History },
   { value: "Bằng chứng", label: "Bằng chứng", icon: FileCheck2 },
   { value: "Xác minh", label: "Xác minh", icon: BadgeCheck },
+  { value: "Quyền & lưu ký", label: "Quyền & lưu ký", icon: ShieldCheck },
   { value: "Vòng đời", label: "Vòng đời", icon: History },
-  { value: "Rủi ro dữ liệu", label: "Rủi ro dữ liệu", icon: AlertTriangle },
-  { value: "Lịch sử blockchain", label: "Lịch sử blockchain", icon: Box },
+  { value: "Giao dịch", label: "Giao dịch", icon: ScrollText },
+  { value: "Risk", label: "Risk", icon: AlertTriangle },
+  { value: "Readiness", label: "Readiness", icon: ShieldCheck },
+  { value: "Blockchain", label: "Blockchain", icon: Box },
 ];
 
 export function AssetPassport() {
@@ -175,6 +179,7 @@ export function AssetPassport() {
               )}
             </div>
           )}
+          {tab === "Sinh học" && <div className="overview-grid"><article><h2>Đo lường gần đây</h2>{asset.measurements?.length ? <dl className="detail-list">{asset.measurements.map((item) => <div key={item.id}><dt>{item.measurementType}</dt><dd>{item.value} {item.unit}</dd></div>)}</dl> : <EmptyState title="Chưa có đo lường công khai" description="Hồ sơ chưa có dữ liệu quan sát được phép công khai." />}</article><article><h2>Sự cố đã công bố</h2>{asset.incidents?.length ? asset.incidents.map((item) => <p key={item.id}><StatusPill value={item.severity} /> {item.type} · {item.status}</p>) : <EmptyState title="Không có sự cố công khai" description="Không đồng nghĩa tài sản không có rủi ro sinh học." />}</article></div>}
           {tab === "Xác minh" && (
             <div className="passport-records">
               {asset.attestations?.map((item) => (
@@ -222,8 +227,11 @@ export function AssetPassport() {
               ))}
             </ol> : <EmptyState title="Chưa có sự kiện vòng đời công khai" description="Các sự kiện hợp lệ sẽ xuất hiện tại đây khi được ghi nhận." />
           )}
-          {tab === "Rủi ro dữ liệu" && (
+          {tab === "Quyền & lưu ký" && <div className="overview-grid"><article><h2>Quyền được công bố</h2>{asset.rightsRecords?.map((item) => <p key={item.id}><strong>{item.rightType}</strong><br />{item.holder} · {item.verifiedStatus}</p>)}</article><article><h2>Lưu ký vật lý</h2>{asset.custodyRecords?.map((item) => <p key={item.id}><strong>{item.physicalCustodian}</strong><br />{item.location} · {item.status}</p>)}</article></div>}
+          {tab === "Giao dịch" && <div className="inline-note"><ScrollText /><span>Trạng thái giao dịch: <strong>{asset.transactionStage}</strong>. Giá, tài liệu chuyển quyền và điều khoản thương mại không hiển thị công khai. Giao dịch không thay đổi vòng đời sinh học.</span></div>}
+          {tab === "Risk" && (
             <div className="risk-list">
+              {asset.riskProfile ? <article className={`warning warning-${asset.riskProfile.overallRisk === "LOW" ? "low" : "high"}`}><AlertTriangle /><div><strong>Rủi ro tổng hợp: {asset.riskProfile.overallRisk}</strong><span>Sinh học {asset.riskProfile.biologicalRisk} · Vị trí {asset.riskProfile.locationRisk} · Lưu ký {asset.riskProfile.custodyRisk}</span></div></article> : null}
               {trust?.warnings.map((warning) => (
                 <article
                   key={warning.code}
@@ -246,7 +254,8 @@ export function AssetPassport() {
               )}
             </div>
           )}
-          {tab === "Lịch sử blockchain" && (
+          {tab === "Readiness" && <div className="passport-records">{asset.readinessProfiles?.map((profile) => <article key={profile.purpose}><div><strong>{profile.purpose}</strong><span>{profile.missingItems.length ? `Thiếu ${profile.missingItems.length} điều kiện` : "Đủ điều kiện cho bước review"}</span></div><StatusPill value={profile.status} /><ul>{profile.requirements.map((item) => <li key={item.key}>{item.met ? "✓" : "○"} {item.label}</li>)}</ul></article>)}</div>}
+          {tab === "Blockchain" && (
             <div className="passport-records">
               {asset.blockchainTransactions?.map((tx) => (
                 <article key={tx.id}>

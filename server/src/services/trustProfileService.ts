@@ -1,5 +1,6 @@
 import { prisma } from "../db/prisma.js";
-import { calculateReadiness } from "./readinessEngine.js";
+import { recalculateReadinessProfiles } from "./readinessEngine.js";
+import { recalculateRisk } from "./riskProfileService.js";
 import { calculateTrust } from "./trustEngine.js";
 
 export async function recalculateTrust(assetId: string) {
@@ -14,7 +15,6 @@ export async function recalculateTrust(assetId: string) {
     asset.attestations,
     asset.lifecycleEvents,
   );
-  const readiness = calculateReadiness(profile, asset.evidence);
   const { warnings, ...scores } = profile;
   const saved = await prisma.trustProfile.upsert({
     where: { assetId },
@@ -29,9 +29,7 @@ export async function recalculateTrust(assetId: string) {
       calculatedAt: new Date(),
     },
   });
-  await prisma.asset.update({
-    where: { id: assetId },
-    data: { passportStatus: readiness },
-  });
-  return { ...saved, warnings, readiness };
+  const risk = await recalculateRisk(assetId);
+  const readinessProfiles = await recalculateReadinessProfiles(assetId);
+  return { ...saved, warnings, risk, readinessProfiles };
 }

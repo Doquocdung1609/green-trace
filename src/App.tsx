@@ -18,6 +18,8 @@ import { VerificationRequestDetail } from "./pages/verifier/VerificationRequestD
 import { VerificationRequests } from "./pages/verifier/VerificationRequests";
 import { SignedAttestations } from "./pages/verifier/SignedAttestations";
 import { VerifierDashboard } from "./pages/verifier/VerifierDashboard";
+import { MyAssets } from "./pages/buyer/MyAssets";
+import { BuyerAssetDetail } from "./pages/buyer/BuyerAssetDetail";
 import { SolanaProvider } from "./solana/SolanaProvider";
 
 const queryClient = new QueryClient({
@@ -71,6 +73,11 @@ export default function App() {
                   </Route>
                   <Route element={<ProtectedRoute roles={["admin"]} />}>
                     <Route path="/admin" element={<AdminDashboard />} />
+                  </Route>
+                  <Route element={<ProtectedRoute roles={["buyer"]} />}>
+                    <Route path="/buyer" element={<Navigate to="/my-assets" replace />} />
+                    <Route path="/my-assets" element={<MyAssets />} />
+                    <Route path="/my-assets/:id" element={<BuyerAssetDetail />} />
                   </Route>
                 </Route>
                 <Route path="*" element={<Navigate to="/" replace />} />

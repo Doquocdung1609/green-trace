@@ -21,7 +21,7 @@ export function Register() {
         password: String(data.get("password")),
         fullName: String(data.get("fullName")),
         phone: String(data.get("phone") || ""),
-        role: data.get("role") as "operator" | "reviewer",
+        role: data.get("role") as "operator" | "reviewer" | "buyer",
         organizationName: String(data.get("organizationName") || ""),
         region: String(data.get("region") || ""),
       });
@@ -76,6 +76,7 @@ export function Register() {
               <span className="input-with-icon"><ShieldCheck size={18} aria-hidden="true" /><select name="role">
                 <option value="operator">Người quản lý tài sản</option>
                 <option value="reviewer">Bên xem hồ sơ</option>
+                <option value="buyer">Người mua tài sản</option>
               </select></span>
             </label>
             <label>

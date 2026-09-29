@@ -1,13 +1,25 @@
-export type UserRole = "operator" | "verifier" | "reviewer" | "admin";
+export type UserRole = "operator" | "verifier" | "reviewer" | "buyer" | "admin";
 
 export type EvidenceType =
   | "PHOTO"
+  | "PHOTO_CARE"
   | "GEO_LOCATION"
   | "IOT_READING"
   | "FARM_LOG"
   | "CERTIFICATE"
   | "INSPECTION"
   | "LAB_RESULT"
+  | "CARE_NOTE"
+  | "ENVIRONMENT_READING"
+  | "PROPAGATION_SOURCE"
+  | "AGE_DOCUMENT"
+  | "RIGHTS_DOCUMENT"
+  | "CUSTODY_DOCUMENT"
+  | "CARE_AGREEMENT"
+  | "BIOLOGICAL_MEASUREMENT"
+  | "BIOLOGICAL_INCIDENT"
+  | "HARVEST_RECORD"
+  | "TRANSACTION_DOCUMENT"
   | "OTHER";
 
 export type VerificationScope =
@@ -17,6 +29,10 @@ export type VerificationScope =
   | "CERTIFICATE_VALIDITY"
   | "LAB_RESULT"
   | "IOT_SOURCE"
+  | "BIOLOGICAL_HEALTH"
+  | "RIGHTS"
+  | "CUSTODY"
+  | "SOURCE_ORIGIN"
   | "OTHER";
 
 export type VerificationDecision =
@@ -33,14 +49,13 @@ export type LifecycleStage =
   | "MATURE"
   | "HARVEST_READY"
   | "HARVESTED"
-  | "TRANSFERRED"
   | "ARCHIVED";
 
 export type Visibility = "PUBLIC" | "PARTNER" | "PRIVATE";
 export type ReadinessStatus =
   | "NOT_READY"
-  | "NEEDS_REVIEW"
-  | "READY_FOR_FINANCIAL_REVIEW";
+  | "NEEDS_SUPPLEMENT"
+  | "READY_FOR_REVIEW";
 export type ChainStatus = "PENDING_CHAIN" | "CONFIRMED" | "FAILED_CHAIN";
 
 export interface Organization {
@@ -48,6 +63,7 @@ export interface Organization {
   name: string;
   type: string;
   region: string;
+  verifierCategory?: string | null;
 }
 
 export interface User {
@@ -68,6 +84,7 @@ export interface Evidence {
   title: string;
   description?: string | null;
   source: string;
+  sourceType: string;
   observedAt: string;
   submittedAt: string;
   submittedBy: string;
@@ -105,6 +122,8 @@ export interface VerificationRequest {
   evidenceId: string;
   requestedScope: VerificationScope;
   requestedVerifierId?: string | null;
+  requiredVerifierCategory?: string | null;
+  priority?: string;
   status: VerificationDecision;
   createdAt: string;
   resolvedAt?: string | null;
@@ -143,6 +162,35 @@ export interface TrustProfile {
   calculatedAt: string;
 }
 
+export type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+export interface RiskProfile {
+  overallRisk: RiskLevel;
+  biologicalRisk: RiskLevel;
+  diseaseRisk: RiskLevel;
+  locationRisk: RiskLevel;
+  freshnessRisk: RiskLevel;
+  certificateRisk: RiskLevel;
+  custodyRisk: RiskLevel;
+  operationalRisk: RiskLevel;
+  openIncidentCount: number;
+  reasons: string[];
+}
+export interface ReadinessProfile {
+  purpose: "REAL_ASSET_TRANSFER" | "FINANCIAL_REVIEW";
+  status: ReadinessStatus;
+  requirements: { key: string; label: string; met: boolean }[];
+  missingItems: string[];
+}
+export interface BiologicalMeasurement { id: string; measurementType: string; value: string; unit: string; observedAt: string; verificationStatus: string }
+export interface AssetIncident { id: string; type: string; severity: RiskLevel; detectedAt: string; description?: string; status: string; verificationStatus: string }
+export interface RightsRecord { id: string; rightType: string; holder: string; validFrom: string; validUntil?: string | null; verifiedStatus: string }
+export interface CustodyRecord { id: string; physicalCustodian: string; location: string; startAt: string; endAt?: string | null; status: string }
+export interface CareAgreement { id: string; serviceTerms: string; careFrequency: string; responsibility: string; riskAllocationSummary: string; status: string; startsAt: string }
+export interface AssetOffer { id: string; assetId: string; askingPrice: number; currency: string; status: string; careAfterSaleAvailable: boolean; careTermsSummary?: string | null; asset?: Asset }
+export interface AssetTransaction { id: string; assetId?: string; offerId?: string | null; buyerId?: string; status: string; price: number; currency: string; custodyAfterSale: string; transactionAt: string; asset: Asset; offer?: AssetOffer | null; buyer?: { id: string; fullName: string; email: string } }
+export interface FulfillmentRequest { id: string; assetId: string; type: string; status: string; requestedAt: string; scheduledAt?: string | null; completedAt?: string | null; notes?: string | null }
+export interface AssetValuation { id: string; referenceValue: number; currency: string; valuationSource: string; valuationMethod: string; valuedAt: string; verificationStatus: string }
+
 export interface DigitalPassport {
   id: string;
   assetId: string;
@@ -168,15 +216,31 @@ export interface Asset {
   assetCode: string;
   displayName: string;
   assetType: string;
+  assetLevel: "SINGLE_ASSET" | "LOT" | "PLOT" | "GROWING_AREA";
   species: string;
+  scientificName?: string | null;
+  cultivar?: string | null;
+  propagationSource?: string | null;
+  propagationBatchCode?: string | null;
+  formationMethod?: string | null;
+  plantedAtConfidence: string;
+  ageBasis: string;
+  initialQuantity?: number | null;
+  quantityUnit?: string | null;
+  areaHectares?: number | null;
+  density?: number | null;
   custodianId: string;
   organizationId: string;
   description: string;
   region: string;
+  province?: string | null;
+  district?: string | null;
+  commune?: string | null;
   exactLatitude?: number;
   exactLongitude?: number;
   plantedAt: string;
   currentStage: LifecycleStage;
+  transactionStage: string;
   passportStatus: ReadinessStatus;
   photoUrl?: string | null;
   createdAt: string;
@@ -188,6 +252,17 @@ export interface Asset {
   attestations?: Attestation[];
   lifecycleEvents?: LifecycleEvent[];
   trustProfile?: TrustProfile | null;
+  riskProfile?: RiskProfile | null;
+  readinessProfiles?: ReadinessProfile[];
+  measurements?: BiologicalMeasurement[];
+  incidents?: AssetIncident[];
+  rightsRecords?: RightsRecord[];
+  custodyRecords?: CustodyRecord[];
+  careAgreements?: CareAgreement[];
+  offers?: AssetOffer[];
+  transactions?: AssetTransaction[];
+  fulfillmentRequests?: FulfillmentRequest[];
+  valuations?: AssetValuation[];
   passports?: DigitalPassport[];
   blockchainTransactions?: BlockchainTransaction[];
 }
@@ -195,7 +270,8 @@ export interface Asset {
 export const roleLabels: Record<UserRole, string> = {
   operator: "Người quản lý tài sản",
   verifier: "Người xác minh",
-  reviewer: "Bên xem hồ sơ",
+  reviewer: "Người duyệt hồ sơ / Đối tác thẩm định",
+  buyer: "Người mua tài sản",
   admin: "Quản trị viên",
 };
 
@@ -207,6 +283,5 @@ export const stageLabels: Record<LifecycleStage, string> = {
   MATURE: "Trưởng thành",
   HARVEST_READY: "Sẵn sàng thu hoạch",
   HARVESTED: "Đã thu hoạch",
-  TRANSFERRED: "Đã chuyển giao",
   ARCHIVED: "Đã lưu trữ",
 };

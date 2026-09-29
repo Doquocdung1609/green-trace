@@ -10,18 +10,30 @@ import { recalculateTrust } from "../services/trustProfileService.js";
 export const assetsRouter = Router();
 const include = {
   organization: true,
-  custodian: true,
+  custodian: { select: { id: true, fullName: true, email: true, role: true, organizationId: true } },
   evidence: {
     include: {
       attestations: {
-        include: { verifier: { include: { organization: true } } },
+        include: { verifier: { select: { id: true, fullName: true, organization: true } } },
       },
     },
   },
-  verificationRequests: { include: { requester: true } },
-  attestations: { include: { verifier: { include: { organization: true } } } },
+  verificationRequests: { include: { requester: { select: { id: true, fullName: true, email: true, organization: true } } } },
+  attestations: { include: { verifier: { select: { id: true, fullName: true, organization: true } } } },
   lifecycleEvents: true,
   trustProfile: true,
+  riskProfile: true,
+  readinessProfiles: true,
+  measurements: true,
+  incidents: true,
+  rightsRecords: true,
+  custodyRecords: true,
+  careAgreements: true,
+  offers: true,
+  transactions: { include: { buyer: { select: { id: true, fullName: true, email: true } }, offer: true } },
+  reviewCases: true,
+  fulfillmentRequests: true,
+  valuations: true,
   passports: true,
   blockchainTransactions: true,
 } as const;
@@ -107,9 +119,9 @@ assetsRouter.get("/assets/:id", requireAuth, async (req, res) => {
   res.json({
     asset: serializeAsset(
       asset,
-      req.user!.role === "reviewer" || req.user!.role === "verifier"
-        ? "partner"
-        : "owner",
+      req.user!.role === "admin" || req.user!.role === "operator"
+        ? "owner"
+        : "partner",
     ),
   });
 });

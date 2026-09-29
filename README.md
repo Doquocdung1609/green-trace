@@ -2,7 +2,7 @@
 
 **Hạ tầng định danh và xác minh tài sản nông nghiệp trước khi tài chính hóa.**
 
-GreenTrace 2.0 tổ chức dữ liệu của tài sản nông nghiệp giá trị cao thành một hồ sơ có thể kiểm tra: tài sản nào, ở đâu, ai đang quản lý, bằng chứng đến từ đâu, ai đã xác minh trong phạm vi nào, lịch sử thay đổi ra sao và hồ sơ còn thiếu hoặc bất thường ở điểm nào.
+GreenTrace 3.0 tổ chức dữ liệu của tài sản sinh học ngoài đời thành một hồ sơ có thể kiểm tra: tài sản nào, ở đâu, ai đang quản lý, bằng chứng đến từ đâu, ai đã xác minh trong phạm vi nào, quyền và lưu ký thuộc về ai, lịch sử sinh học thay đổi ra sao và hồ sơ còn thiếu hoặc bất thường ở điểm nào.
 
 MVP không phát hành token, không vận hành sàn đầu tư, không cho vay, không bảo hiểm và không đưa ra kết luận sinh học tự động.
 
@@ -16,11 +16,11 @@ GreenTrace triển khai pipeline theo đúng thứ tự:
 
 1. Định danh tài sản.
 2. Kho bằng chứng và SHA-256 hash.
-3. Xác minh độc lập theo phạm vi.
-4. Sổ vòng đời có transition rules.
-5. Điểm tin cậy hồ sơ và cảnh báo logic.
-6. Hộ chiếu tài sản số có phiên bản.
-7. Readiness gate cho bước xem xét tài chính ở hạ nguồn.
+3. Policy engine tự phân luồng: vận hành tự kiểm tra, dữ liệu trọng yếu tạo yêu cầu verifier độc lập.
+4. Đo lường, sự cố và Risk Profile sinh học.
+5. Quyền, lưu ký và thỏa thuận chăm sóc độc lập.
+6. Vòng đời sinh học tách khỏi vòng đời giao dịch mua đứt.
+7. Trust Profile, hộ chiếu số và readiness theo từng mục đích.
 
 ## Architecture
 
@@ -49,9 +49,10 @@ Source chính:
 
 | Role | Nhãn UI | Quyền chính |
 | --- | --- | --- |
-| `operator` | Người quản lý tài sản | Tạo tài sản, nộp bằng chứng, yêu cầu xác minh, ghi vòng đời |
+| `operator` | Người quản lý tài sản | Tạo tài sản, nộp bằng chứng, quản lý sinh học/quyền/lưu ký, ghi vòng đời |
 | `verifier` | Người xác minh | Xem hàng đợi, kiểm tra bằng chứng, ký attestation bằng Phantom |
-| `reviewer` | Bên xem hồ sơ | Tra cứu, lọc, xem và xuất tóm tắt hộ chiếu |
+| `reviewer` | Người duyệt hồ sơ / Đối tác thẩm định | Rà soát dossier theo mục đích và đưa quyết định readiness |
+| `buyer` | Người mua tài sản | Xem đề nghị mua đứt, theo dõi tài sản đã mua và yêu cầu thực hiện |
 | `admin` | Quản trị viên | Quản lý phạm vi hệ thống và xem audit log |
 
 Backend đọc role từ JWT trong cookie HttpOnly. Role trong localStorage không được dùng để phân quyền API.
@@ -68,7 +69,7 @@ Backend đọc role từ JWT trong cookie HttpOnly. Role trong localStorage khô
 
 Anomaly engine kiểm tra GPS ngoài vùng khai báo, thời điểm trước ngày trồng, transition vòng đời sai, chứng nhận/attestation hết hạn, thiếu bằng chứng bắt buộc, hash trùng và thiếu xác minh độc lập. UI dùng “Cần kiểm tra” hoặc “Bất thường logic”, không kết luận gian lận.
 
-Readiness gate chỉ trả `READY_FOR_FINANCIAL_REVIEW` khi định danh ≥ 90%, bằng chứng ≥ 80%, xác minh độc lập ≥ 70%, không có cảnh báo HIGH và có chứng nhận còn hiệu lực.
+Trust chỉ đo chất lượng hồ sơ và bị chặn trong khoảng 0–100. Risk là hồ sơ riêng với các chiều sinh học, dịch bệnh, vị trí, độ mới, chứng nhận, lưu ký, thời tiết và vận hành. Readiness trả `NOT_READY`, `NEEDS_SUPPLEMENT` hoặc `READY_FOR_REVIEW` riêng cho `REAL_ASSET_TRANSFER` và `FINANCIAL_REVIEW`; đây không phải điểm tín dụng hay khuyến nghị đầu tư.
 
 ## Why Solana
 
@@ -142,22 +143,26 @@ Tất cả dùng mật khẩu `GreenTrace123!`:
 | `operator@greentrace.vn` | operator |
 | `operator2@greentrace.vn` | operator |
 | `verifier@greentrace.vn` | verifier |
-| `verifier2@greentrace.vn` | verifier |
+| `lab@greentrace.vn` | verifier (LAB) |
 | `reviewer@greentrace.vn` | reviewer |
+| `buyer@greentrace.vn` | buyer |
 | `admin@greentrace.vn` | admin |
 
-Seed gồm 8 hồ sơ Sâm Ngọc Linh: hồ sơ tốt, thiếu chứng nhận, GPS bất thường, xung đột vòng đời, attestation hết hạn và hồ sơ mới ít dữ liệu.
+Seed gồm 9 hồ sơ Sâm Ngọc Linh: hồ sơ đầy đủ có lịch sử sự cố đã xử lý, thiếu chứng nhận, GPS bất thường, sự cố sâu bệnh đang mở, attestation hết hạn, hồ sơ mới, đang chào bán, đã bán nhưng vẫn sinh trưởng và quyền đang chờ.
 
 ## Demo flow
 
 1. Đăng nhập operator và tạo tài sản; trạng thái đầu là `REGISTERED`.
 2. Tải ảnh/PDF/JSON/log; server validate MIME/size và tạo SHA-256.
-3. Gửi yêu cầu xác minh.
-4. Đăng xuất, đăng nhập verifier và kết nối Phantom.
+3. Policy engine tự tạo yêu cầu chỉ với bằng chứng trọng yếu; ảnh chăm sóc và nhật ký vận hành không tạo request.
+4. Đăng xuất, đăng nhập verifier thuộc tổ chức độc lập và kết nối Phantom.
 5. Chọn scope, nhập note, duyệt; Phantom gửi transaction hash payload lên Solana devnet.
 6. Backend xác nhận signature, tạo attestation và tính lại trust profile.
 7. Operator bổ sung bằng chứng, chuyển vòng đời hợp lệ và tạo phiên bản passport mới có passport root transaction.
-8. Reviewer lọc tài sản, mở passport, xem evidence, verifier, cảnh báo, lifecycle, Explorer links và disclaimer.
+8. Operator theo dõi Risk, Rights, Custody, Care, tạo đề nghị mua đứt; buyer gửi yêu cầu mua và xem `/my-assets`.
+9. Operator gắn tài liệu quyền/giao dịch để hoàn tất mua đứt; trạng thái sinh học vẫn độc lập với `SOLD` và lưu ký tại HTX.
+10. Buyer yêu cầu thu hoạch hoặc bàn giao; operator xác nhận lịch. Hoàn tất thu hoạch bị chặn cho tới khi có `HARVEST_RECORD` đã xác minh.
+11. Reviewer xử lý ReviewCase theo mục đích; public passport hiển thị 10 nhóm dữ liệu nhưng không lộ GPS chính xác, tài liệu private hay giá giao dịch.
 
 ## Tests and build
 
@@ -167,8 +172,7 @@ npm run test:all
 npm run build:all
 ```
 
-Backend tests bao phủ auth role guard, asset create, evidence hashing, approve flow, trust/anomaly rules, illegal lifecycle transition và redaction. Frontend tests bao phủ role routes, trust score/disclaimer và error state.
-Backend acceptance còn bao phủ reject, attestation revocation và admin policy guard. Dashboard operator hiển thị phân bố vòng đời, điểm tin cậy, bằng chứng còn thiếu và thời gian xử lý xác minh; admin quản lý role, xem tổ chức, policy và audit log.
+Backend tests bao phủ role guard, asset có cấu trúc, policy tự sinh request, bằng chứng vận hành không sinh request, chặn verifier cùng tổ chức, approve khác tổ chức, trust clamp/denominator, risk từ incident, quyền–lưu ký, mua đứt, tách hai vòng đời, review case và public redaction. Frontend tests bao phủ role routes, trust score/disclaimer và error state.
 
 ## Limitations
 

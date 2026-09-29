@@ -10,6 +10,7 @@ import { authRouter } from "./routes/auth.js";
 import { evidenceRouter } from "./routes/evidence.js";
 import { lifecycleRouter } from "./routes/lifecycle.js";
 import { passportRouter } from "./routes/passport.js";
+import { productRouter } from "./routes/product.js";
 import { verificationRouter } from "./routes/verification.js";
 
 export const app = express();
@@ -40,6 +41,7 @@ app.use(
   verificationRouter,
   lifecycleRouter,
   passportRouter,
+  productRouter,
   adminRouter,
 );
 app.use((_req, res) =>

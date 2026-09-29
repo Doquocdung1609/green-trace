@@ -34,8 +34,10 @@ export function OperatorDashboard() {
     (asset) => (asset.trustProfile?.warningCount ?? 0) > 0,
   ).length;
   const ready = assets.filter(
-    (asset) => asset.passportStatus === "READY_FOR_FINANCIAL_REVIEW",
+    (asset) => asset.readinessProfiles?.some((profile) => profile.purpose === "FINANCIAL_REVIEW" && profile.status === "READY_FOR_REVIEW"),
   ).length;
+  const transferReady = assets.filter((asset) => asset.readinessProfiles?.some((profile) => profile.purpose === "REAL_ASSET_TRANSFER" && profile.status === "READY_FOR_REVIEW")).length;
+  const updatedToday = assets.filter((asset) => new Date(asset.updatedAt).toDateString() === new Date().toDateString()).length;
   const lifecycleRows = [
     ["Đăng ký", "REGISTERED"],
     ["Đã xác minh trồng", "PLANTED_VERIFIED"],
@@ -44,7 +46,6 @@ export function OperatorDashboard() {
     ["Trưởng thành", "MATURE"],
     ["Sẵn sàng thu hoạch", "HARVEST_READY"],
     ["Đã thu hoạch", "HARVESTED"],
-    ["Đã chuyển giao", "TRANSFERRED"],
     ["Đã lưu trữ", "ARCHIVED"],
   ].map(([label, stage]) => ({
     label,
@@ -108,16 +109,10 @@ export function OperatorDashboard() {
         </Link>} />
       <div className="stats-grid">
         <StatCard label="Tổng tài sản" value={assets.length} icon={Sprout} />
-        <StatCard
-          label="Hồ sơ đủ dữ liệu"
-          value={
-            assets.filter((a) => (a.trustProfile?.evidenceScore ?? 0) >= 16)
-              .length
-          }
-          icon={FileCheck2}
-        />
-        <StatCard label="Chờ xác minh" value={pending} icon={Clock3} />
-        <StatCard label="Có cảnh báo" value={warned} icon={AlertTriangle} />
+        <StatCard label="Cập nhật hôm nay" value={updatedToday} icon={FileCheck2} />
+        <StatCard label="Cần xác minh / bổ sung" value={pending} icon={Clock3} />
+        <StatCard label="Cảnh báo đang mở" value={warned} icon={AlertTriangle} />
+        <StatCard label="Sẵn sàng chuyển quyền" value={transferReady} icon={CheckCircle2} />
         <StatCard
           label="Sẵn sàng xem xét tài chính"
           value={ready}

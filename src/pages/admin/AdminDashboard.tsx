@@ -44,6 +44,8 @@ interface AdminPolicy {
   verificationScopes: string[];
   lifecycleTransitions: Record<string, string[]>;
   editingMode: string;
+  verificationPolicies: { id: string; evidenceType: string; verificationRequired: boolean; requiredScope?: string | null; requiredVerifierCategory?: string | null }[];
+  assetTemplates: { id: string; name: string; version: number }[];
 }
 
 export function AdminDashboard() {
@@ -102,6 +104,7 @@ export function AdminDashboard() {
                       <option value="operator">Người quản lý tài sản</option>
                       <option value="verifier">Người xác minh</option>
                       <option value="reviewer">Bên xem hồ sơ</option>
+                      <option value="buyer">Người mua tài sản</option>
                       <option value="admin">Quản trị viên</option>
                     </select>
                   </td>
@@ -154,6 +157,8 @@ export function AdminDashboard() {
           <div><h3>Schema bằng chứng</h3><p>{policy?.evidenceTypes.join(" · ")}</p></div>
           <div><h3>Phạm vi xác minh</h3><p>{policy?.verificationScopes.join(" · ")}</p></div>
           <div><h3>Quy tắc vòng đời</h3>{Object.entries(policy?.lifecycleTransitions ?? {}).map(([from, to]) => <p key={from}><strong>{from}</strong> → {to.join(", ") || "Kết thúc"}</p>)}</div>
+          <div><h3>Policy xác minh 2+1</h3>{policy?.verificationPolicies.map((item) => <p key={item.id}><strong>{item.evidenceType}</strong> · {item.verificationRequired ? `Verifier ${item.requiredVerifierCategory ?? "độc lập"} / ${item.requiredScope}` : "Hệ thống kiểm tra, không tạo request"}</p>)}</div>
+          <div><h3>Mẫu tài sản</h3>{policy?.assetTemplates.map((item) => <p key={item.id}><strong>{item.name}</strong> · v{item.version}</p>)}</div>
         </div>
       </section>
       <ConfirmDialog open={Boolean(pendingRole)} title="Xác nhận thay đổi vai trò" description={pendingRole ? `Vai trò của ${pendingRole.user.fullName} sẽ đổi từ ${pendingRole.user.role} sang ${pendingRole.role}. Thay đổi có hiệu lực với quyền truy cập API.` : ""} confirmLabel="Cập nhật vai trò" busy={updateRole.isPending} onCancel={() => setPendingRole(null)} onConfirm={() => pendingRole && updateRole.mutate({ id: pendingRole.user.id, role: pendingRole.role })} />

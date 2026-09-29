@@ -5,8 +5,7 @@ export const lifecycleTransitions: Record<string, string[]> = {
   INSPECTED: ["MATURE", "GROWING", "ARCHIVED"],
   MATURE: ["HARVEST_READY", "ARCHIVED"],
   HARVEST_READY: ["HARVESTED", "ARCHIVED"],
-  HARVESTED: ["TRANSFERRED", "ARCHIVED"],
-  TRANSFERRED: ["ARCHIVED"],
+  HARVESTED: ["ARCHIVED"],
   ARCHIVED: [],
 };
 

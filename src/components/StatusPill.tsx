@@ -1,10 +1,9 @@
-import type { LifecycleStage, ReadinessStatus, VerificationDecision } from "../types/domain";
 import { StatusBadge } from "./ui/StatusBadge";
 
 export function StatusPill({
   value,
 }: {
-  value: ReadinessStatus | VerificationDecision | LifecycleStage;
+  value: string;
 }) {
   return <StatusBadge value={value} />;
 }

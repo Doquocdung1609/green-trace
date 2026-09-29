@@ -1,122 +1,45 @@
-import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ClipboardCheck, ShieldAlert } from "lucide-react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import { EmptyState } from "../../components/EmptyState";
-import { PassportCard } from "../../components/ui/Cards";
-import { ErrorState } from "../../components/ui/ErrorState";
-import { FilterSelect, SearchInput } from "../../components/ui/Inputs";
+import { StatusPill } from "../../components/StatusPill";
 import { LoadingSkeleton } from "../../components/ui/LoadingSkeleton";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { SectionHeader } from "../../components/ui/SectionHeader";
 import { useToast } from "../../hooks/useToast";
 import { api } from "../../services/apiClient";
-import type { Asset, ReadinessStatus } from "../../types/domain";
+import type { Asset } from "../../types/domain";
+
+interface ReviewCase { id: string; purpose: string; status: string; decision?: string | null; notes?: string | null; createdAt: string; asset: Asset; requestedBy: { fullName: string } }
 
 export function ReviewerDashboard() {
+  const client = useQueryClient();
   const { notify } = useToast();
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["review-assets"],
-    queryFn: () => api.get<{ assets: Asset[] }>("/assets"),
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const { data, isLoading, error } = useQuery({ queryKey: ["review-cases"], queryFn: () => api.get<{ cases: ReviewCase[] }>("/review-cases") });
+  const decide = useMutation({
+    mutationFn: ({ id, decision }: { id: string; decision: string }) => api.patch(`/review-cases/${id}`, { decision, notes: notes[id] || "Đã rà soát dossier theo mục đích và ghi nhận quyết định." }),
+    onSuccess: async () => { await client.invalidateQueries({ queryKey: ["review-cases"] }); notify("Đã lưu quyết định review case"); },
+    onError: (reason) => notify("Không thể lưu quyết định", { tone: "error", description: reason instanceof Error ? reason.message : "Vui lòng thử lại." }),
   });
-  const [query, setQuery] = useState("");
-  const [readiness, setReadiness] = useState<ReadinessStatus | "ALL">("ALL");
-  const [region, setRegion] = useState("ALL");
-  const [minScore, setMinScore] = useState(0);
-  const [sort, setSort] = useState<"score" | "newest">("score");
-  const regions = useMemo(
-    () => [...new Set((data?.assets ?? []).map((asset) => asset.region))].sort(),
-    [data],
-  );
-  const assets = useMemo(
-    () =>
-      (data?.assets ?? []).filter(
-        (asset) =>
-          (readiness === "ALL" || asset.passportStatus === readiness) &&
-          (region === "ALL" || asset.region === region) &&
-          (asset.trustProfile?.totalScore ?? 0) >= minScore &&
-          `${asset.displayName} ${asset.assetCode} ${asset.region}`
-            .toLowerCase()
-            .includes(query.toLowerCase()),
-      ).sort((left, right) => sort === "score" ? (right.trustProfile?.totalScore ?? 0) - (left.trustProfile?.totalScore ?? 0) : new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()),
-    [data, readiness, region, minScore, query, sort],
-  );
-  const exportSummary = (asset: Asset) => {
-    const blob = new Blob(
-      [
-        JSON.stringify(
-          {
-            assetCode: asset.assetCode,
-            displayName: asset.displayName,
-            region: asset.region,
-            readiness: asset.passportStatus,
-            trustScore: asset.trustProfile?.totalScore,
-            generatedAt: new Date().toISOString(),
-            disclaimer:
-              "Không phải định giá, điểm tín dụng hoặc khuyến nghị đầu tư.",
-          },
-          null,
-          2,
-        ),
-      ],
-      { type: "application/json" },
-    );
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${asset.assetCode}-passport-summary.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    notify("Đã xuất tóm tắt hộ chiếu", { description: `${asset.assetCode} được tải dưới dạng JSON có cấu trúc.` });
-  };
-  if (isLoading) return <LoadingSkeleton cards={6} label="Đang tải danh mục hộ chiếu" />;
-  if (error) return <ErrorState description="Không thể tải danh mục hộ chiếu tài sản." />;
-  return (
-    <div className="page-stack">
-      <PageHeader eyebrow="Cổng đối tác" title="Tra cứu hộ chiếu tài sản số" description="Khám phá và đánh giá hồ sơ tài sản nông nghiệp. Xem nguồn gốc, bằng chứng, mức độ tin cậy và các cảnh báo rủi ro trước khi hợp tác." />
-      <section className="filter-bar">
-        <SearchInput label="Tìm hộ chiếu"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Mã, tên tài sản hoặc khu vực…"
-          />
-        <FilterSelect label="Trạng thái"
-          value={readiness}
-          onChange={(e) =>
-            setReadiness(e.target.value as ReadinessStatus | "ALL")
-          }
-        >
-          <option value="ALL">Tất cả trạng thái</option>
-          <option value="READY_FOR_FINANCIAL_REVIEW">Sẵn sàng xem xét</option>
-          <option value="NEEDS_REVIEW">Cần xem xét</option>
-          <option value="NOT_READY">Chưa sẵn sàng</option>
-        </FilterSelect>
-        <FilterSelect label="Khu vực" value={region} onChange={(e) => setRegion(e.target.value)}>
-          <option value="ALL">Tất cả khu vực</option>
-          {regions.map((item) => (
-            <option key={item} value={item}>{item}</option>
-          ))}
-        </FilterSelect>
-        <label className="score-filter">
-          Điểm từ{" "}
-          <input
-            type="number"
-            min="0"
-            max="100"
-            value={minScore}
-            onChange={(e) => setMinScore(Number(e.target.value))}
-          />
-        </label>
-        <FilterSelect label="Sắp xếp" value={sort} onChange={(event) => setSort(event.target.value as "score" | "newest")}><option value="score">Điểm cao nhất</option><option value="newest">Mới cập nhật</option></FilterSelect>
-      </section>
-      <div className="reviewer-summary"><div><h2>{assets.length} hộ chiếu tài sản</h2><p>Kết quả phù hợp với bộ lọc hiện tại</p></div></div>
-      {assets.length ? (
-        <div className="asset-card-grid">
-          {assets.map((asset) => <PassportCard key={asset.id} asset={asset} onExport={exportSummary} />)}
+  if (isLoading) return <LoadingSkeleton cards={4} label="Đang tải review case" />;
+  if (error) return <EmptyState title="Không thể tải review case" description="Hãy kiểm tra API và thử lại." />;
+  const cases = data?.cases ?? [];
+  return <div className="page-stack"><PageHeader eyebrow="Thẩm định hồ sơ" title="Rà soát theo mục đích" description="Đối tác thẩm định kết luận trên toàn bộ hồ sơ theo mục đích; không duyệt lại từng bằng chứng thay cho người xác minh." />
+    <div className="stats-grid"><div className="stat-card"><ClipboardCheck /><span>Case đang chờ</span><strong>{cases.filter((item) => item.status === "PENDING").length}</strong></div><div className="stat-card"><ShieldAlert /><span>Cần bổ sung</span><strong>{cases.filter((item) => item.decision === "NEEDS_SUPPLEMENT").length}</strong></div></div>
+    <section className="panel"><SectionHeader title="Danh sách hồ sơ rà soát" description="Trust, Risk, Rights và Custody được trình bày riêng để tránh suy diễn." />
+      {cases.length ? <div className="passport-records">{cases.map((item) => <article key={item.id}><div><strong>{item.asset.displayName}</strong><span>{item.asset.assetCode} · {item.purpose} · yêu cầu bởi {item.requestedBy.fullName}</span></div><StatusPill value={item.decision || item.status} />
+        <div className="review-dossier-grid"><span>Trust <b>{item.asset.trustProfile?.totalScore ?? 0}/100</b></span><span>Risk <b>{item.asset.riskProfile?.overallRisk ?? "—"}</b></span><span>Quyền <b>{item.asset.rightsRecords?.[0]?.verifiedStatus ?? "THIẾU"}</b></span><span>Lưu ký <b>{item.asset.custodyRecords?.[0]?.status ?? "THIẾU"}</b></span></div>
+        <div className="review-dossier-details">
+          <div><strong>Bằng chứng trọng yếu đã xác minh</strong><span>{item.asset.evidence?.length ? item.asset.evidence.map((evidence) => evidence.type).join(" · ") : "Chưa có"}</span></div>
+          <div><strong>Sự cố đang mở</strong><span>{item.asset.incidents?.length ? item.asset.incidents.map((incident) => `${incident.type} (${incident.severity})`).join(" · ") : "Không có"}</span></div>
+          <div><strong>Vòng đời gần nhất</strong><span>{item.asset.lifecycleEvents?.[0]?.stageTo ?? item.asset.currentStage}</span></div>
+          <div><strong>Khoảng trống readiness</strong><span>{item.asset.readinessProfiles?.flatMap((profile) => profile.missingItems).join(" · ") || "Không có"}</span></div>
         </div>
-      ) : (
-        <EmptyState
-          title="Không tìm thấy hồ sơ"
-          description="Hãy thay đổi từ khóa hoặc bộ lọc."
-        />
-      )}
-    </div>
-  );
+        <Link className="text-link" to={`/passport/${item.asset.assetCode}`}>Mở hộ chiếu công khai</Link>
+        {item.status === "PENDING" ? <><label>Ghi chú<textarea value={notes[item.id] ?? ""} onChange={(event) => setNotes((current) => ({ ...current, [item.id]: event.target.value }))} /></label><div className="card-actions"><button type="button" className="button secondary compact" onClick={() => decide.mutate({ id: item.id, decision: "NOT_READY" })}>Chưa sẵn sàng</button><button type="button" className="button secondary compact" onClick={() => decide.mutate({ id: item.id, decision: "NEEDS_SUPPLEMENT" })}>Cần bổ sung</button><button type="button" className="button primary compact" onClick={() => decide.mutate({ id: item.id, decision: "READY_FOR_REVIEW" })}>Sẵn sàng review</button></div></> : <p>{item.notes}</p>}
+      </article>)}</div> : <EmptyState title="Chưa có review case" description="Operator hoặc buyer có thể gửi dossier theo mục đích cụ thể." />}
+    </section>
+  </div>;
 }

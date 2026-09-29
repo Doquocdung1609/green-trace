@@ -9,21 +9,46 @@ import { calculateTrust } from "../src/services/trustEngine.js";
 import { detectAnomalies } from "../src/services/anomalyEngine.js";
 import { validateTransition } from "../src/services/lifecycleEngine.js";
 import { calculateReadiness } from "../src/services/readinessEngine.js";
+import { calculateRisk } from "../src/services/riskProfileService.js";
 
 const asset = {
   id: "a",
   assetCode: "GT-NL-TEST",
   displayName: "Sâm test",
   assetType: "Dược liệu",
+  assetLevel: "LOT",
   species: "Panax vietnamensis",
+  scientificName: "Panax vietnamensis",
+  cultivar: null,
+  propagationSource: "Vườn giống",
+  propagationBatchCode: null,
+  formationMethod: null,
+  plantedAtConfidence: "DOCUMENTED",
+  ageBasis: "DOCUMENTED",
+  initialQuantity: 100,
+  quantityUnit: "cây",
+  areaHectares: 1,
+  density: 100,
   custodianId: "u",
   organizationId: "o",
   description: "Hồ sơ test đủ dài",
   region: "Nam Trà My",
+  province: "Quảng Nam",
+  district: "Nam Trà My",
+  commune: null,
+  caretaker: "HTX",
+  managementBasis: "Hợp đồng",
+  elevationMeters: 1500,
+  spatialType: "POINT",
+  boundaryGeoJson: null,
+  growingAreaCode: null,
+  geographicalIndication: null,
+  templateId: null,
   exactLatitude: 15,
   exactLongitude: 108,
   plantedAt: new Date("2021-01-01"),
   currentStage: "GROWING",
+  transactionStage: "NOT_LISTED",
   passportStatus: "NOT_READY",
   photoUrl: null,
   metadataHash: "h",
@@ -52,6 +77,9 @@ const evidence = (
     validFrom: null,
     validUntil: null,
     verificationStatus: "APPROVED",
+    sourceType: "OPERATOR",
+    systemValidationStatus: "PASSED",
+    verificationPolicyKey: null,
     metadataJson: null,
     ...overrides,
   }) as Evidence;
@@ -118,13 +146,13 @@ describe("trust and anomaly engines", () => {
         },
         items,
       ),
-    ).toBe("READY_FOR_FINANCIAL_REVIEW");
+    ).toBe("READY_FOR_REVIEW");
     expect(
       calculateReadiness(
         {
           identityScore: 20,
           evidenceScore: 16,
-          verificationScore: 21,
+          verificationScore: 10,
           freshnessScore: 15,
           consistencyScore: 10,
           totalScore: 82,
@@ -133,7 +161,25 @@ describe("trust and anomaly engines", () => {
         },
         items,
       ),
-    ).toBe("NEEDS_REVIEW");
+    ).toBe("NEEDS_SUPPLEMENT");
+  });
+
+  it("clamps trust to 100 and excludes operational evidence from verification coverage", () => {
+    const geo = evidence("GEO_LOCATION", "geo");
+    const approved = { evidenceId: geo.id, decision: "APPROVED", revokedAt: null, expiresAt: new Date("2030-01-01") } as Attestation;
+    const baseline = calculateTrust(asset, [geo], [approved], [], new Date("2026-01-01"));
+    const withOperational = calculateTrust(asset, [geo, evidence("PHOTO_CARE", "care")], [approved], [], new Date("2026-01-01"));
+    expect(baseline.verificationScore).toBe(30);
+    expect(withOperational.verificationScore).toBe(30);
+    expect(withOperational.totalScore).toBeLessThanOrEqual(100);
+  });
+
+  it("raises risk for an open biological incident and never treats sale as a biological transition", () => {
+    const incident = { severity: "HIGH", status: "OPEN", type: "DISEASE" } as import("@prisma/client").AssetIncident;
+    const risk = calculateRisk(asset, [], [incident], [], []);
+    expect(risk.biologicalRisk).toBe("HIGH");
+    expect(risk.diseaseRisk).toBe("HIGH");
+    expect(validateTransition("HARVESTED", "TRANSFERRED", { approvedScopes: [], evidenceTypes: [] }).ok).toBe(false);
   });
 
   it("detects expired attestations and lifecycle conflicts", () => {

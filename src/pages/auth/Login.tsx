@@ -73,6 +73,9 @@ export function Login() {
           <button type="button" onClick={() => setEmail("reviewer@greentrace.vn")}>
             Reviewer
           </button>
+          <button type="button" onClick={() => setEmail("buyer@greentrace.vn")}>
+            Buyer
+          </button>
         </div>
         <p>
           Chưa có tài khoản? <Link className="text-link" to="/register">Đăng ký tài khoản <ArrowRight size={15} /></Link>
