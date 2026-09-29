@@ -1,12 +1,13 @@
 import { FileText, Info, Map, MapPin, Plus, Sprout, Upload } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { lazy, Suspense, useCallback, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../../services/apiClient";
 import type { Asset } from "../../types/domain";
 import { FormSection } from "../../components/ui/FormSection";
-import { MapCard } from "../../components/ui/MapCard";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { useToast } from "../../hooks/useToast";
+
+const InteractiveAssetMap = lazy(() => import("../../components/ui/InteractiveAssetMap"));
 
 export function CreateAsset() {
   const navigate = useNavigate();
@@ -17,6 +18,10 @@ export function CreateAsset() {
   const [latitude, setLatitude] = useState<number>();
   const [longitude, setLongitude] = useState<number>();
   const [description, setDescription] = useState("");
+  const updateCoordinates = useCallback((nextLatitude?: number, nextLongitude?: number) => {
+    setLatitude(nextLatitude);
+    setLongitude(nextLongitude);
+  }, []);
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setBusy(true);
@@ -92,8 +97,10 @@ export function CreateAsset() {
           {error ? <p className="form-error" role="alert">{error}</p> : null}
         </div>
         <aside className="asset-form-aside">
-          <FormSection title="Vị trí trên bản đồ" description="Bản xem trước dựa trên dữ liệu bạn nhập." icon={Map}>
-            <MapCard region={region} latitude={latitude} longitude={longitude} />
+          <FormSection title="Vị trí trên bản đồ" description="Tìm kiếm, nhấp bản đồ hoặc kéo marker để chọn tọa độ." icon={Map}>
+            <Suspense fallback={<div className="map-card map-component-loading" role="status">Đang tải thành phần bản đồ…</div>}>
+              <InteractiveAssetMap region={region} latitude={latitude} longitude={longitude} onRegionChange={setRegion} onCoordinatesChange={updateCoordinates} />
+            </Suspense>
           </FormSection>
           <div className="asset-form-actions"><button className="button primary wide" disabled={busy}>{busy ? "Đang tạo hồ sơ…" : <><Plus size={18} /> Tạo hồ sơ</>}</button></div>
         </aside>
