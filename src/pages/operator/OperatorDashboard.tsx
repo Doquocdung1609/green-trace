@@ -11,6 +11,13 @@ import { Link } from "react-router-dom";
 import { EmptyState } from "../../components/EmptyState";
 import { StatCard } from "../../components/StatCard";
 import { StatusPill } from "../../components/StatusPill";
+import { AssetThumbnail } from "../../components/ui/AssetThumbnail";
+import { DataTable } from "../../components/ui/DataTable";
+import { ErrorState } from "../../components/ui/ErrorState";
+import { LoadingSkeleton } from "../../components/ui/LoadingSkeleton";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { ProgressBar } from "../../components/ui/ProgressBar";
+import { SectionHeader } from "../../components/ui/SectionHeader";
 import { api } from "../../services/apiClient";
 import type { Asset } from "../../types/domain";
 
@@ -90,27 +97,15 @@ export function OperatorDashboard() {
       ) / resolved.length
     : 0;
 
-  if (isLoading)
-    return <div className="page-state">Đang tải danh sách tài sản…</div>;
+  if (isLoading) return <LoadingSkeleton cards={5} label="Đang tải danh sách tài sản" />;
   if (error)
-    return (
-      <div className="page-state error">
-        Không thể tải dữ liệu. Hãy kiểm tra backend.
-      </div>
-    );
+    return <ErrorState description="Không thể tải danh sách tài sản. Hãy kiểm tra kết nối và thử lại." action={<button className="button secondary" type="button" onClick={() => window.location.reload()}>Thử lại</button>} />;
   return (
     <div className="page-stack">
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">Không gian vận hành</p>
-          <h1>Tổng quan tài sản</h1>
-          <p>Theo dõi độ đầy đủ, xác minh và cảnh báo của từng hồ sơ.</p>
-        </div>
-        <Link className="button primary" to="/operator/assets/new">
+      <PageHeader eyebrow="Không gian vận hành" title="Tổng quan tài sản" description="Theo dõi toàn bộ tài sản, tiến độ hồ sơ và chất lượng dữ liệu trên GreenTrace." actions={<Link className="button primary" to="/operator/assets/new">
           <Plus size={18} />
           Đăng ký tài sản
-        </Link>
-      </div>
+        </Link>} />
       <div className="stats-grid">
         <StatCard label="Tổng tài sản" value={assets.length} icon={Sprout} />
         <StatCard
@@ -131,9 +126,7 @@ export function OperatorDashboard() {
       </div>
       <div className="insight-grid">
         <section className="panel compact-panel">
-          <div className="panel-heading">
-            <div><h2>Phân bố vòng đời</h2><p>Số hồ sơ ở từng giai đoạn hiện tại.</p></div>
-          </div>
+          <SectionHeader title="Phân bố theo vòng đời" description="Số hồ sơ ở từng giai đoạn hiện tại." />
           <div className="bar-list">
             {lifecycleRows.map((row) => (
               <div className="bar-row" key={row.label}>
@@ -145,9 +138,7 @@ export function OperatorDashboard() {
           </div>
         </section>
         <section className="panel compact-panel">
-          <div className="panel-heading">
-            <div><h2>Chất lượng hồ sơ</h2><p>Nhóm theo điểm tin cậy mới nhất.</p></div>
-          </div>
+          <SectionHeader title="Chất lượng hồ sơ" description="Nhóm theo điểm tin cậy mới nhất." />
           <div className="bar-list">
             {scoreRows.map((row) => (
               <div className="bar-row" key={row.label}>
@@ -159,9 +150,7 @@ export function OperatorDashboard() {
           </div>
         </section>
         <section className="panel compact-panel">
-          <div className="panel-heading">
-            <div><h2>Bằng chứng còn thiếu</h2><p>Độ đầy đủ theo điểm bằng chứng 20.</p></div>
-          </div>
+          <SectionHeader title="Bằng chứng còn thiếu" description="Độ đầy đủ theo điểm bằng chứng 20." />
           <div className="bar-list">
             {evidenceRows.map((row) => (
               <div className="bar-row" key={row.label}>
@@ -173,9 +162,7 @@ export function OperatorDashboard() {
           </div>
         </section>
         <section className="panel compact-panel turnaround-panel">
-          <div className="panel-heading">
-            <div><h2>Thời gian xác minh</h2><p>Tính từ lúc gửi đến lúc có quyết định.</p></div>
-          </div>
+          <SectionHeader title="Thời gian xác minh" description="Tính từ lúc gửi đến lúc có quyết định." />
           <div className="turnaround-metrics">
             <div><strong>{averageHours ? `${averageHours.toFixed(1)} giờ` : "Chưa có"}</strong><span>Trung bình đã xử lý</span></div>
             <div><strong>{requests.filter((request) => request.status === "PENDING").length}</strong><span>Yêu cầu đang chờ</span></div>
@@ -184,14 +171,7 @@ export function OperatorDashboard() {
         </section>
       </div>
       <section className="panel">
-        <div className="panel-heading">
-          <div>
-            <h2>Hồ sơ gần đây</h2>
-            <p>
-              Điểm phản ánh chất lượng hồ sơ, không phản ánh giá trị tài sản.
-            </p>
-          </div>
-        </div>
+        <SectionHeader title="Danh sách tài sản gần đây" description="Điểm phản ánh chất lượng hồ sơ, không phản ánh giá trị tài sản." />
         {assets.length === 0 ? (
           <EmptyState
             title="Chưa có tài sản"
@@ -203,8 +183,7 @@ export function OperatorDashboard() {
             }
           />
         ) : (
-          <div className="data-table-wrap">
-            <table className="data-table">
+          <DataTable label="Danh sách tài sản gần đây">
               <thead>
                 <tr>
                   <th>Tài sản</th>
@@ -219,8 +198,7 @@ export function OperatorDashboard() {
                 {assets.map((asset) => (
                   <tr key={asset.id}>
                     <td>
-                      <strong>{asset.displayName}</strong>
-                      <small>{asset.assetCode}</small>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}><AssetThumbnail src={asset.photoUrl} alt={asset.displayName} /><span><strong>{asset.displayName}</strong><small>{asset.assetCode}</small></span></div>
                     </td>
                     <td>{asset.region}</td>
                     <td>
@@ -229,13 +207,7 @@ export function OperatorDashboard() {
                     <td>
                       <div className="score-cell">
                         <strong>{asset.trustProfile?.totalScore ?? 0}</strong>
-                        <div>
-                          <span
-                            style={{
-                              width: `${asset.trustProfile?.totalScore ?? 0}%`,
-                            }}
-                          />
-                        </div>
+                        <ProgressBar value={asset.trustProfile?.totalScore ?? 0} label={`Điểm tin cậy của ${asset.displayName}`} />
                       </div>
                     </td>
                     <td>
@@ -252,8 +224,7 @@ export function OperatorDashboard() {
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
+          </DataTable>
         )}
       </section>
     </div>

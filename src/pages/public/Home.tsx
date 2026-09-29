@@ -5,10 +5,17 @@ import {
   FileCheck2,
   Fingerprint,
   Leaf,
+  Menu,
   ShieldCheck,
   Waypoints,
+  X,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Link } from "react-router-dom";
+import { TrustScore } from "../../components/ui/TrustScore";
+import { api } from "../../services/apiClient";
+import type { Asset } from "../../types/domain";
 
 const layers = [
   [
@@ -44,6 +51,14 @@ const layers = [
 ];
 
 export function Home() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { data: sampleData } = useQuery({
+    queryKey: ["home-sample-passport"],
+    queryFn: () => api.get<{ asset: Asset }>("/public/passports/GT-NL-2026-000128"),
+    retry: false,
+  });
+  const sample = sampleData?.asset;
+  const trust = sample?.trustProfile;
   return (
     <div className="public-page">
       <header className="public-nav">
@@ -51,12 +66,16 @@ export function Home() {
           <Leaf />
           <span>GreenTrace</span>
         </Link>
-        <nav>
-          <a href="#how">Cách hoạt động</a>
-          <a href="#trust">Mô hình tin cậy</a>
-          <Link to="/passport/GT-NL-2026-000128">Hộ chiếu mẫu</Link>
+        <button className="public-menu" type="button" aria-label={menuOpen ? "Đóng menu" : "Mở menu"} aria-expanded={menuOpen} onClick={() => setMenuOpen((current) => !current)}>
+          {menuOpen ? <X /> : <Menu />}
+        </button>
+        <nav className={menuOpen ? "open" : ""} aria-label="Điều hướng chính">
+          <a href="#how" onClick={() => setMenuOpen(false)}>Cách hoạt động</a>
+          <a href="#trust" onClick={() => setMenuOpen(false)}>Mô hình tin cậy</a>
+          <Link to="/passport/GT-NL-2026-000128" onClick={() => setMenuOpen(false)}>Hộ chiếu mẫu</Link>
+          <a href="#about" onClick={() => setMenuOpen(false)}>Về chúng tôi</a>
         </nav>
-        <div>
+        <div className="public-nav-actions">
           <Link className="button secondary" to="/login">
             Đăng nhập
           </Link>
@@ -99,36 +118,32 @@ export function Home() {
             </div>
           </div>
           <div className="hero-visual">
+            <Leaf className="hero-leaf" aria-hidden="true" />
             <div className="passport-preview">
               <div className="preview-head">
-                <span>GT</span>
+                <img src={sample?.photoUrl || "/assets/demo/ginseng-field.svg"} alt={sample ? `Ảnh ${sample.displayName}` : "Ảnh minh họa tài sản nông nghiệp"} />
                 <div>
                   <small>HỘ CHIẾU TÀI SẢN SỐ</small>
-                  <strong>Sâm Ngọc Linh</strong>
+                  <strong>{sample?.displayName || "Hộ chiếu tài sản mẫu"}</strong>
+                  <span className="muted">{sample?.assetCode || "Đang tải dữ liệu…"}</span>
                 </div>
-                <span className="verified-dot">✓</span>
+                <span className="verified-dot" aria-label={sample?.passportStatus === "READY_FOR_FINANCIAL_REVIEW" ? "Sẵn sàng xem xét" : "Hồ sơ đang được kiểm tra"}>{sample?.passportStatus === "READY_FOR_FINANCIAL_REVIEW" ? "✓" : "•"}</span>
               </div>
-              <div className="score-ring">
-                <div>
-                  <strong>82</strong>
-                  <span>/100</span>
-                </div>
-              </div>
-              <p>Điểm tin cậy hồ sơ</p>
+              {trust ? <TrustScore score={trust.totalScore} /> : <div className="preview-score-loading" role="status">Đang tải điểm tin cậy…</div>}
               <div className="preview-row">
                 <Fingerprint />
                 <span>Định danh</span>
-                <strong>20/20</strong>
+                <strong>{trust ? `${trust.identityScore}/20` : "—"}</strong>
               </div>
               <div className="preview-row">
                 <Database />
                 <span>Bằng chứng</span>
-                <strong>17/20</strong>
+                <strong>{trust ? `${trust.evidenceScore}/20` : "—"}</strong>
               </div>
               <div className="preview-row">
                 <FileCheck2 />
                 <span>Xác minh</span>
-                <strong>21/30</strong>
+                <strong>{trust ? `${trust.verificationScore}/30` : "—"}</strong>
               </div>
               <div className="readiness">
                 <span>Sẵn sàng để đối tác tài chính bắt đầu xem xét</span>
@@ -172,6 +187,12 @@ export function Home() {
             <li>Hash + signature</li>
             <li>Blockchain integrity</li>
           </ol>
+        </section>
+        <section id="about" className="section">
+          <p className="eyebrow"><FileCheck2 size={16} /> Hộ chiếu mẫu</p>
+          <h2>Xem cách một hồ sơ tài sản thực tế được trình bày</h2>
+          <p className="muted">Khám phá cấu trúc dữ liệu, điểm tin cậy, bằng chứng, cảnh báo và lịch sử blockchain của hồ sơ minh họa.</p>
+          <Link className="button primary" to="/passport/GT-NL-2026-000128">Xem hộ chiếu mẫu <ArrowRight size={17} /></Link>
         </section>
       </main>
       <footer className="public-footer">

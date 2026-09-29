@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AuthProvider } from "./contexts/AuthProvider";
+import { ToastProvider } from "./contexts/ToastProvider";
 import { AppShell } from "./layouts/AppShell";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { Login } from "./pages/auth/Login";
@@ -15,6 +16,7 @@ import { Home } from "./pages/public/Home";
 import { ReviewerDashboard } from "./pages/reviewer/ReviewerDashboard";
 import { VerificationRequestDetail } from "./pages/verifier/VerificationRequestDetail";
 import { VerificationRequests } from "./pages/verifier/VerificationRequests";
+import { SignedAttestations } from "./pages/verifier/SignedAttestations";
 import { VerifierDashboard } from "./pages/verifier/VerifierDashboard";
 import { SolanaProvider } from "./solana/SolanaProvider";
 
@@ -27,7 +29,8 @@ export default function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <SolanaProvider>
-          <AuthProvider>
+          <ToastProvider>
+            <AuthProvider>
             <BrowserRouter>
               <Routes>
                 <Route path="/" element={<Home />} />
@@ -59,6 +62,7 @@ export default function App() {
                       path="/verifier/requests/:id"
                       element={<VerificationRequestDetail />}
                     />
+                    <Route path="/verifier/attestations" element={<SignedAttestations />} />
                   </Route>
                   <Route
                     element={<ProtectedRoute roles={["reviewer", "admin"]} />}
@@ -72,7 +76,8 @@ export default function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </BrowserRouter>
-          </AuthProvider>
+            </AuthProvider>
+          </ToastProvider>
         </SolanaProvider>
       </QueryClientProvider>
     </ErrorBoundary>

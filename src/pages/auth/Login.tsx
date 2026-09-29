@@ -1,4 +1,4 @@
-import { Leaf } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Leaf, LockKeyhole, Mail } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
@@ -11,6 +11,7 @@ export function Login() {
   const [password, setPassword] = useState("GreenTrace123!");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -49,44 +50,32 @@ export function Login() {
         </div>
         <form onSubmit={submit}>
           <label>
-            Email
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-            />
+            <span>Email <span className="required" aria-hidden="true">*</span></span>
+            <span className="input-with-icon"><Mail size={18} aria-hidden="true" /><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" /></span>
           </label>
           <label>
-            Mật khẩu
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
+            <span>Mật khẩu <span className="required" aria-hidden="true">*</span></span>
+            <span className="input-with-icon"><LockKeyhole size={18} aria-hidden="true" /><input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" /><button type="button" onClick={() => setShowPassword((current) => !current)} aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></span>
           </label>
-          {error && <p className="form-error">{error}</p>}
+          {error && <p className="form-error" role="alert">{error}</p>}
           <button className="button primary wide" disabled={busy}>
-            {busy ? "Đang đăng nhập…" : "Đăng nhập"}
+            {busy ? "Đang đăng nhập…" : <>Đăng nhập <ArrowRight size={18} /></>}
           </button>
         </form>
         <div className="demo-accounts">
           <strong>Tài khoản demo</strong>
-          <button onClick={() => setEmail("operator@greentrace.vn")}>
+          <button type="button" onClick={() => setEmail("operator@greentrace.vn")}>
             Operator
           </button>
-          <button onClick={() => setEmail("verifier@greentrace.vn")}>
+          <button type="button" onClick={() => setEmail("verifier@greentrace.vn")}>
             Verifier
           </button>
-          <button onClick={() => setEmail("reviewer@greentrace.vn")}>
+          <button type="button" onClick={() => setEmail("reviewer@greentrace.vn")}>
             Reviewer
           </button>
         </div>
         <p>
-          Chưa có tài khoản? <Link to="/register">Đăng ký</Link>
+          Chưa có tài khoản? <Link className="text-link" to="/register">Đăng ký tài khoản <ArrowRight size={15} /></Link>
         </p>
       </main>
     </div>

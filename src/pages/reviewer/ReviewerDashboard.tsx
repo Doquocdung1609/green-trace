@@ -1,14 +1,18 @@
-import { Download, Search } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { EmptyState } from "../../components/EmptyState";
-import { StatusPill } from "../../components/StatusPill";
+import { PassportCard } from "../../components/ui/Cards";
+import { ErrorState } from "../../components/ui/ErrorState";
+import { FilterSelect, SearchInput } from "../../components/ui/Inputs";
+import { LoadingSkeleton } from "../../components/ui/LoadingSkeleton";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { useToast } from "../../hooks/useToast";
 import { api } from "../../services/apiClient";
 import type { Asset, ReadinessStatus } from "../../types/domain";
 
 export function ReviewerDashboard() {
-  const { data, isLoading } = useQuery({
+  const { notify } = useToast();
+  const { data, isLoading, error } = useQuery({
     queryKey: ["review-assets"],
     queryFn: () => api.get<{ assets: Asset[] }>("/assets"),
   });
@@ -16,6 +20,7 @@ export function ReviewerDashboard() {
   const [readiness, setReadiness] = useState<ReadinessStatus | "ALL">("ALL");
   const [region, setRegion] = useState("ALL");
   const [minScore, setMinScore] = useState(0);
+  const [sort, setSort] = useState<"score" | "newest">("score");
   const regions = useMemo(
     () => [...new Set((data?.assets ?? []).map((asset) => asset.region))].sort(),
     [data],
@@ -30,8 +35,8 @@ export function ReviewerDashboard() {
           `${asset.displayName} ${asset.assetCode} ${asset.region}`
             .toLowerCase()
             .includes(query.toLowerCase()),
-      ),
-    [data, readiness, region, minScore, query],
+      ).sort((left, right) => sort === "score" ? (right.trustProfile?.totalScore ?? 0) - (left.trustProfile?.totalScore ?? 0) : new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()),
+    [data, readiness, region, minScore, query, sort],
   );
   const exportSummary = (asset: Asset) => {
     const blob = new Blob(
@@ -59,31 +64,20 @@ export function ReviewerDashboard() {
     a.download = `${asset.assetCode}-passport-summary.json`;
     a.click();
     URL.revokeObjectURL(url);
+    notify("Đã xuất tóm tắt hộ chiếu", { description: `${asset.assetCode} được tải dưới dạng JSON có cấu trúc.` });
   };
-  if (isLoading)
-    return <div className="page-state">Đang tải danh mục hộ chiếu…</div>;
+  if (isLoading) return <LoadingSkeleton cards={6} label="Đang tải danh mục hộ chiếu" />;
+  if (error) return <ErrorState description="Không thể tải danh mục hộ chiếu tài sản." />;
   return (
     <div className="page-stack">
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">Cổng đối tác</p>
-          <h1>Tra cứu hộ chiếu tài sản số</h1>
-          <p>
-            Xem nguồn bằng chứng, phạm vi xác minh, cảnh báo và giới hạn sử
-            dụng.
-          </p>
-        </div>
-      </div>
+      <PageHeader eyebrow="Cổng đối tác" title="Tra cứu hộ chiếu tài sản số" description="Khám phá và đánh giá hồ sơ tài sản nông nghiệp. Xem nguồn gốc, bằng chứng, mức độ tin cậy và các cảnh báo rủi ro trước khi hợp tác." />
       <section className="filter-bar">
-        <label>
-          <Search size={17} />
-          <input
+        <SearchInput label="Tìm hộ chiếu"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Mã, tên tài sản hoặc khu vực…"
           />
-        </label>
-        <select
+        <FilterSelect label="Trạng thái"
           value={readiness}
           onChange={(e) =>
             setReadiness(e.target.value as ReadinessStatus | "ALL")
@@ -93,13 +87,13 @@ export function ReviewerDashboard() {
           <option value="READY_FOR_FINANCIAL_REVIEW">Sẵn sàng xem xét</option>
           <option value="NEEDS_REVIEW">Cần xem xét</option>
           <option value="NOT_READY">Chưa sẵn sàng</option>
-        </select>
-        <select value={region} onChange={(e) => setRegion(e.target.value)}>
+        </FilterSelect>
+        <FilterSelect label="Khu vực" value={region} onChange={(e) => setRegion(e.target.value)}>
           <option value="ALL">Tất cả khu vực</option>
           {regions.map((item) => (
             <option key={item} value={item}>{item}</option>
           ))}
-        </select>
+        </FilterSelect>
         <label className="score-filter">
           Điểm từ{" "}
           <input
@@ -110,44 +104,12 @@ export function ReviewerDashboard() {
             onChange={(e) => setMinScore(Number(e.target.value))}
           />
         </label>
+        <FilterSelect label="Sắp xếp" value={sort} onChange={(event) => setSort(event.target.value as "score" | "newest")}><option value="score">Điểm cao nhất</option><option value="newest">Mới cập nhật</option></FilterSelect>
       </section>
+      <div className="reviewer-summary"><div><h2>{assets.length} hộ chiếu tài sản</h2><p>Kết quả phù hợp với bộ lọc hiện tại</p></div></div>
       {assets.length ? (
         <div className="asset-card-grid">
-          {assets.map((asset) => (
-            <article className="asset-card" key={asset.id}>
-              <div className="asset-image">
-                {asset.photoUrl ? (
-                  <img src={asset.photoUrl} alt={asset.displayName} />
-                ) : (
-                  <span>GT</span>
-                )}
-              </div>
-              <div>
-                <small>{asset.assetCode}</small>
-                <h2>{asset.displayName}</h2>
-                <p>{asset.region}</p>
-                <div className="asset-score">
-                  <strong>{asset.trustProfile?.totalScore ?? 0}</strong>
-                  <span>Điểm tin cậy hồ sơ</span>
-                </div>
-                <StatusPill value={asset.passportStatus} />
-                <div className="card-actions">
-                  <Link
-                    className="button secondary"
-                    to={`/passport/${asset.assetCode}`}
-                  >
-                    Mở hộ chiếu
-                  </Link>
-                  <button
-                    onClick={() => exportSummary(asset)}
-                    title="Xuất tóm tắt"
-                  >
-                    <Download size={18} />
-                  </button>
-                </div>
-              </div>
-            </article>
-          ))}
+          {assets.map((asset) => <PassportCard key={asset.id} asset={asset} onExport={exportSummary} />)}
         </div>
       ) : (
         <EmptyState

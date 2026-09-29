@@ -12,7 +12,7 @@ export function EmptyState({
 }) {
   return (
     <div className="empty-state">
-      <FileSearch size={34} />
+      <span className="empty-state-icon"><FileSearch size={26} /></span>
       <h3>{title}</h3>
       <p>{description}</p>
       {action}

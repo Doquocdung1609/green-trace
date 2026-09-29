@@ -1,5 +1,6 @@
 import {
   ClipboardCheck,
+  FileSignature,
   FileBadge,
   Gauge,
   Leaf,
@@ -13,7 +14,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { SolanaWalletButton } from "../components/SolanaWalletButton";
+import { WalletStatus } from "../components/ui/WalletStatus";
 import { useAuth } from "../hooks/useAuth";
 import { roleLabels, type UserRole } from "../types/domain";
 
@@ -32,6 +33,7 @@ const navByRole: Record<
       label: "Yêu cầu xác minh",
       icon: ClipboardCheck,
     },
+    { to: "/verifier/attestations", label: "Attestation đã ký", icon: FileSignature },
   ],
   reviewer: [{ to: "/reviewer", label: "Tra cứu hộ chiếu", icon: Search }],
   admin: [{ to: "/admin", label: "Quản trị", icon: Settings }],
@@ -44,6 +46,7 @@ export function AppShell() {
 
   return (
     <div className="app-shell">
+      {open ? <button className="sidebar-scrim" onClick={() => setOpen(false)} aria-label="Đóng menu điều hướng" /> : null}
       <aside className={open ? "sidebar sidebar-open" : "sidebar"}>
         <div className="brand">
           <Leaf />
@@ -98,14 +101,15 @@ export function AppShell() {
             className="mobile-menu"
             onClick={() => setOpen(true)}
             aria-label="Mở menu"
+            aria-expanded={open}
           >
             <Menu />
           </button>
-          <div>
+          <div className="topbar-copy">
             <strong>Verify &amp; Prove before Finance</strong>
             <span>Hạ tầng hồ sơ tin cậy cho tài sản nông nghiệp</span>
           </div>
-          <SolanaWalletButton />
+          <WalletStatus />
         </header>
         <main className="main-content">
           <Outlet />

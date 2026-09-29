@@ -1,4 +1,4 @@
-import { Leaf } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, Eye, EyeOff, Leaf, LockKeyhole, Mail, MapPin, Phone, ShieldCheck, UserRound } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
@@ -8,6 +8,8 @@ export function Register() {
   const navigate = useNavigate();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setBusy(true);
@@ -53,44 +55,46 @@ export function Register() {
         <form onSubmit={submit}>
           <div className="form-grid">
             <label>
-              Họ và tên
-              <input name="fullName" required />
+              <span>Họ và tên <span className="required" aria-hidden="true">*</span></span>
+              <span className="input-with-icon"><UserRound size={18} aria-hidden="true" /><input name="fullName" placeholder="Nhập họ và tên của bạn" required /></span>
             </label>
             <label>
               Số điện thoại
-              <input name="phone" />
+              <span className="input-with-icon"><Phone size={18} aria-hidden="true" /><input name="phone" type="tel" placeholder="Nhập số điện thoại" /></span>
             </label>
             <label>
-              Email
-              <input name="email" type="email" required />
+              <span>Email <span className="required" aria-hidden="true">*</span></span>
+              <span className="input-with-icon"><Mail size={18} aria-hidden="true" /><input name="email" type="email" placeholder="Nhập địa chỉ email" required /></span>
             </label>
             <label>
-              Mật khẩu
-              <input name="password" type="password" minLength={10} required />
+              <span>Mật khẩu <span className="required" aria-hidden="true">*</span></span>
+              <span className="input-with-icon"><LockKeyhole size={18} aria-hidden="true" /><input name="password" type={showPassword ? "text" : "password"} minLength={10} maxLength={128} value={password} onChange={(event) => setPassword(event.target.value)} aria-describedby="password-hint" placeholder="Tạo mật khẩu" required /><button type="button" onClick={() => setShowPassword((current) => !current)} aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></span>
+              <span id="password-hint" className={password && password.length < 10 ? "field-help field-invalid" : "field-help"}>{password.length}/10 ký tự tối thiểu</span>
             </label>
             <label>
-              Vai trò
-              <select name="role">
+              <span>Vai trò <span className="required" aria-hidden="true">*</span></span>
+              <span className="input-with-icon"><ShieldCheck size={18} aria-hidden="true" /><select name="role">
                 <option value="operator">Người quản lý tài sản</option>
                 <option value="reviewer">Bên xem hồ sơ</option>
-              </select>
+              </select></span>
             </label>
             <label>
               Tổ chức
-              <input name="organizationName" />
+              <span className="input-with-icon"><BriefcaseBusiness size={18} aria-hidden="true" /><input name="organizationName" placeholder="Nhập tên tổ chức" /></span>
             </label>
             <label className="full">
               Khu vực
-              <input name="region" />
+              <span className="input-with-icon"><MapPin size={18} aria-hidden="true" /><input name="region" placeholder="Tỉnh/thành, quận/huyện, xã/phường" /></span>
             </label>
           </div>
-          {error && <p className="form-error">{error}</p>}
+          <div className="inline-note"><ShieldCheck size={18} /><span><strong>Lưu ý về vai trò:</strong> Verifier và Admin được quản trị viên cấp quyền sau khi hồ sơ được phê duyệt.</span></div>
+          {error && <p className="form-error" role="alert">{error}</p>}
           <button className="button primary wide" disabled={busy}>
-            {busy ? "Đang tạo…" : "Tạo tài khoản"}
+            {busy ? "Đang tạo…" : <>Tạo tài khoản <ArrowRight size={18} /></>}
           </button>
         </form>
         <p>
-          Đã có tài khoản? <Link to="/login">Đăng nhập</Link>
+          Đã có tài khoản? <Link className="text-link" to="/login">Đăng nhập <ArrowRight size={15} /></Link>
         </p>
       </main>
     </div>

@@ -2,11 +2,14 @@ import {
   AlertTriangle,
   ArrowLeft,
   BadgeCheck,
+  Box,
+  Copy,
   ExternalLink,
   FileCheck2,
   Fingerprint,
   History,
   MapPin,
+  ScrollText,
   ShieldCheck,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -14,36 +17,35 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { EmptyState } from "../../components/EmptyState";
 import { StatusPill } from "../../components/StatusPill";
+import { ErrorState } from "../../components/ui/ErrorState";
+import { LoadingSkeleton } from "../../components/ui/LoadingSkeleton";
+import { ProgressBar } from "../../components/ui/ProgressBar";
+import { TabNav, type TabItem } from "../../components/ui/TabNav";
 import { api } from "../../services/apiClient";
 import { getSolanaExplorerUrl } from "../../solana/explorer";
 import { stageLabels, type Asset } from "../../types/domain";
 
-const tabs = [
-  "Tổng quan",
-  "Bằng chứng",
-  "Xác minh",
-  "Vòng đời",
-  "Rủi ro dữ liệu",
-  "Lịch sử blockchain",
-] as const;
-type Tab = (typeof tabs)[number];
+type Tab = "Tổng quan" | "Bằng chứng" | "Xác minh" | "Vòng đời" | "Rủi ro dữ liệu" | "Lịch sử blockchain";
+const tabItems: TabItem<Tab>[] = [
+  { value: "Tổng quan", label: "Tổng quan", icon: Fingerprint },
+  { value: "Bằng chứng", label: "Bằng chứng", icon: FileCheck2 },
+  { value: "Xác minh", label: "Xác minh", icon: BadgeCheck },
+  { value: "Vòng đời", label: "Vòng đời", icon: History },
+  { value: "Rủi ro dữ liệu", label: "Rủi ro dữ liệu", icon: AlertTriangle },
+  { value: "Lịch sử blockchain", label: "Lịch sử blockchain", icon: Box },
+];
 
 export function AssetPassport() {
   const { assetCode = "" } = useParams();
   const [tab, setTab] = useState<Tab>("Tổng quan");
+  const [copiedHash, setCopiedHash] = useState(false);
   const { data, isLoading, error } = useQuery({
     queryKey: ["public-passport", assetCode],
     queryFn: () => api.get<{ asset: Asset }>(`/public/passports/${assetCode}`),
   });
-  if (isLoading)
-    return <div className="page-state">Đang kiểm tra hộ chiếu…</div>;
+  if (isLoading) return <main className="passport-container"><LoadingSkeleton cards={5} label="Đang kiểm tra hộ chiếu" /></main>;
   if (error || !data)
-    return (
-      <div className="page-state error">
-        <h1>Không tìm thấy hộ chiếu</h1>
-        <Link to="/">Về trang chủ</Link>
-      </div>
-    );
+    return <div className="page-state"><ErrorState title="Không tìm thấy hộ chiếu" description="Mã tài sản không tồn tại hoặc hộ chiếu chưa được công khai." action={<Link className="button primary" to="/">Về trang chủ</Link>} /></div>;
   const asset = data.asset;
   const trust = asset.trustProfile;
   const latest = asset.passports?.[0];
@@ -62,7 +64,7 @@ export function AssetPassport() {
           <ArrowLeft size={16} />
           Trang chủ
         </Link>
-        <section className="passport-header">
+        <section className="passport-header" style={{ backgroundImage: `linear-gradient(100deg,rgba(3,75,55,.98) 0 58%,rgba(3,75,55,.15)),url("${asset.photoUrl || "/assets/demo/ginseng-field.svg"}")` }}>
           <div>
             <p className="eyebrow">
               Hộ chiếu tài sản số · Phiên bản {latest?.version ?? 1}
@@ -76,7 +78,7 @@ export function AssetPassport() {
           <div className="passport-score">
             <strong>{trust?.totalScore ?? 0}</strong>
             <span>/100</span>
-            <small>Điểm tin cậy hồ sơ</small>
+            <small><span>Điểm tin cậy hồ sơ</span> · {trust && trust.totalScore >= 80 ? "Độ tin cậy cao" : "Cần xem xét"}</small>
           </div>
         </section>
         <section className="passport-metrics">
@@ -84,39 +86,34 @@ export function AssetPassport() {
             <Fingerprint />
             <span>Định danh</span>
             <strong>{trust?.identityScore ?? 0}/20</strong>
+            <ProgressBar value={trust?.identityScore ?? 0} max={20} label="Điểm định danh" />
           </div>
           <div>
             <FileCheck2 />
             <span>Bằng chứng</span>
             <strong>{trust?.evidenceScore ?? 0}/20</strong>
+            <ProgressBar value={trust?.evidenceScore ?? 0} max={20} label="Điểm bằng chứng" />
           </div>
           <div>
             <BadgeCheck />
             <span>Xác minh</span>
             <strong>{trust?.verificationScore ?? 0}/30</strong>
+            <ProgressBar value={trust?.verificationScore ?? 0} max={30} label="Điểm xác minh" />
           </div>
           <div>
             <History />
             <span>Độ mới</span>
             <strong>{trust?.freshnessScore ?? 0}/15</strong>
+            <ProgressBar value={trust?.freshnessScore ?? 0} max={15} label="Điểm độ mới" />
           </div>
           <div>
             <ShieldCheck />
             <span>Nhất quán</span>
             <strong>{trust?.consistencyScore ?? 0}/15</strong>
+            <ProgressBar value={trust?.consistencyScore ?? 0} max={15} label="Điểm nhất quán" />
           </div>
         </section>
-        <nav className="passport-tabs">
-          {tabs.map((item) => (
-            <button
-              key={item}
-              className={tab === item ? "active" : ""}
-              onClick={() => setTab(item)}
-            >
-              {item}
-            </button>
-          ))}
-        </nav>
+        <TabNav items={tabItems} value={tab} onChange={setTab} label="Nội dung hộ chiếu" />
         <section className="passport-content">
           {tab === "Tổng quan" && (
             <div className="overview-grid">
@@ -146,7 +143,7 @@ export function AssetPassport() {
                 <h2>Phạm vi sử dụng</h2>
                 <p>{asset.description}</p>
                 <p className="hash-block">
-                  Passport hash{" "}
+                  <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>Passport hash {latest?.passportHash ? <button type="button" className="text-link" onClick={() => { void navigator.clipboard.writeText(latest.passportHash); setCopiedHash(true); window.setTimeout(() => setCopiedHash(false), 1600); }} aria-label="Sao chép passport hash"><Copy size={15} /> {copiedHash ? "Đã sao chép" : "Sao chép"}</button> : null}</span>
                   <code>{latest?.passportHash ?? "Chưa tạo phiên bản"}</code>
                 </p>
               </article>
@@ -211,8 +208,8 @@ export function AssetPassport() {
             </div>
           )}
           {tab === "Vòng đời" && (
-            <ol className="timeline">
-              {asset.lifecycleEvents?.map((event) => (
+            asset.lifecycleEvents?.length ? <ol className="timeline">
+              {asset.lifecycleEvents.map((event) => (
                 <li key={event.id}>
                   <time>
                     {new Date(event.occurredAt).toLocaleDateString("vi-VN")}
@@ -223,7 +220,7 @@ export function AssetPassport() {
                   </div>
                 </li>
               ))}
-            </ol>
+            </ol> : <EmptyState title="Chưa có sự kiện vòng đời công khai" description="Các sự kiện hợp lệ sẽ xuất hiện tại đây khi được ghi nhận." />
           )}
           {tab === "Rủi ro dữ liệu" && (
             <div className="risk-list">
@@ -284,7 +281,7 @@ export function AssetPassport() {
           )}
         </section>
         <section className="disclaimer">
-          <ShieldCheck />
+          <ScrollText />
           <div>
             <strong>Giới hạn của hộ chiếu</strong>
             <p>
