@@ -3,6 +3,7 @@ import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } f
 import * as trackasiagl from "trackasia-gl";
 import "trackasia-gl/dist/trackasia-gl.css";
 import { config } from "../../lib/config";
+import { parseTrackAsiaAddress } from "../../lib/trackAsiaAddress";
 
 const TRACK_ASIA_BASE_URL = "https://maps.track-asia.com";
 const DEFAULT_CENTER: [number, number] = [108.0089, 15.2853];
@@ -24,6 +25,11 @@ interface TextSearchResponse {
   results?: Array<{
     formatted_address?: string;
     geometry?: { location?: { lat?: number; lng?: number } };
+    address_components?: Array<{
+      long_name?: string;
+      short_name?: string;
+      types?: string[];
+    }>;
   }>;
   error_message?: string;
 }
@@ -33,6 +39,12 @@ interface InteractiveAssetMapProps {
   latitude?: number;
   longitude?: number;
   onRegionChange: (region: string) => void;
+  onAddressChange?: (address: {
+    region: string;
+    province: string;
+    district: string;
+    commune: string;
+  }) => void;
   onCoordinatesChange: (latitude?: number, longitude?: number) => void;
 }
 
@@ -53,6 +65,7 @@ export function InteractiveAssetMap({
   latitude,
   longitude,
   onRegionChange,
+  onAddressChange,
   onCoordinatesChange,
 }: InteractiveAssetMapProps) {
   const listboxId = useId();
@@ -66,6 +79,7 @@ export function InteractiveAssetMap({
   const initialCoordinatesRef = useRef({ latitude, longitude });
   const onCoordinatesChangeRef = useRef(onCoordinatesChange);
   const onRegionChangeRef = useRef(onRegionChange);
+  const onAddressChangeRef = useRef(onAddressChange);
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState("");
   const [searchError, setSearchError] = useState("");
@@ -78,6 +92,7 @@ export function InteractiveAssetMap({
 
   onCoordinatesChangeRef.current = onCoordinatesChange;
   onRegionChangeRef.current = onRegionChange;
+  onAddressChangeRef.current = onAddressChange;
 
   const placeMarker = useCallback((nextLatitude: number, nextLongitude: number, moveCamera = true) => {
     const map = mapRef.current;
@@ -221,9 +236,17 @@ export function InteractiveAssetMap({
       const nextLongitude = Number(bestResult.geometry?.location?.lng);
       if (!isValidCoordinate(nextLatitude, nextLongitude)) throw new Error("TrackAsia không trả về tọa độ hợp lệ.");
       const formattedAddress = bestResult.formatted_address || normalizedQuery;
+      const address = parseTrackAsiaAddress(bestResult);
+      address.region = formattedAddress;
       setSearchQuery(formattedAddress);
       setSuggestions([]);
       onRegionChangeRef.current(formattedAddress);
+      onAddressChangeRef.current?.(address);
+      if (!address.province || !address.district) {
+        setSearchError(
+          "TrackAsia chưa trả đủ tỉnh/huyện; bạn có thể chỉnh các trường địa chỉ trước khi lưu.",
+        );
+      }
       onCoordinatesChangeRef.current(roundCoordinate(nextLatitude), roundCoordinate(nextLongitude));
       placeMarker(nextLatitude, nextLongitude);
     } catch (reason) {
@@ -281,6 +304,7 @@ export function InteractiveAssetMap({
     setAutocompleteLoading(false);
     setIsSearching(false);
     onRegionChangeRef.current("");
+    onAddressChangeRef.current?.({ region: "", province: "", district: "", commune: "" });
     onCoordinatesChangeRef.current(undefined, undefined);
     mapRef.current?.easeTo({ center: DEFAULT_CENTER, zoom: 5.5, duration: 650 });
   };

@@ -16,6 +16,9 @@ export function CreateAsset() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [region, setRegion] = useState("");
+  const [province, setProvince] = useState("");
+  const [district, setDistrict] = useState("");
+  const [commune, setCommune] = useState("");
   const [latitude, setLatitude] = useState<number>();
   const [longitude, setLongitude] = useState<number>();
   const [description, setDescription] = useState("");
@@ -99,7 +102,7 @@ export function CreateAsset() {
           <FormSection title="3. Vị trí" description="Khu vực công khai và tọa độ chính xác được quản lý ở hai lớp riêng." icon={MapPin}>
             <div className="form-grid">
               <label className="full">Khu vực <input name="region" value={region} onChange={(event) => setRegion(event.target.value)} placeholder="Nam Trà My, Quảng Nam" required /></label>
-              <label>Tỉnh<input name="province" defaultValue="Quảng Nam" /></label><label>Huyện<input name="district" defaultValue="Nam Trà My" /></label><label>Xã<input name="commune" /></label><label>Độ cao (m)<input name="elevationMeters" type="number" /></label><label>Mã vùng trồng<input name="growingAreaCode" /></label><label>Chỉ dẫn địa lý<input name="geographicalIndication" /></label>
+              <label>Tỉnh<input name="province" value={province} onChange={(event) => setProvince(event.target.value)} /></label><label>Huyện<input name="district" value={district} onChange={(event) => setDistrict(event.target.value)} /></label><label>Xã<input name="commune" value={commune} onChange={(event) => setCommune(event.target.value)} /></label><label>Độ cao (m)<input name="elevationMeters" type="number" /></label><label>Mã vùng trồng<input name="growingAreaCode" /></label><label>Chỉ dẫn địa lý<input name="geographicalIndication" /></label>
               <label>Vĩ độ <input name="latitude" type="number" min="-90" max="90" step="any" value={latitude ?? ""} onChange={(event) => setLatitude(event.target.value ? Number(event.target.value) : undefined)} placeholder="15.2853" required /></label>
               <label>Kinh độ <input name="longitude" type="number" min="-180" max="180" step="any" value={longitude ?? ""} onChange={(event) => setLongitude(event.target.value ? Number(event.target.value) : undefined)} placeholder="108.0089" required /></label>
             </div>
@@ -119,7 +122,7 @@ export function CreateAsset() {
         <aside className="asset-form-aside">
           <FormSection title="Vị trí trên bản đồ" description="Tìm kiếm, nhấp bản đồ hoặc kéo marker để chọn tọa độ." icon={Map}>
             <Suspense fallback={<div className="map-card map-component-loading" role="status">Đang tải thành phần bản đồ…</div>}>
-              <InteractiveAssetMap region={region} latitude={latitude} longitude={longitude} onRegionChange={setRegion} onCoordinatesChange={updateCoordinates} />
+              <InteractiveAssetMap region={region} latitude={latitude} longitude={longitude} onRegionChange={setRegion} onAddressChange={(address) => { setRegion(address.region); setProvince(address.province); setDistrict(address.district); setCommune(address.commune); }} onCoordinatesChange={updateCoordinates} />
             </Suspense>
           </FormSection>
           <div className="asset-form-actions"><button className="button primary wide" disabled={busy}>{busy ? "Đang tạo hồ sơ…" : <><Plus size={18} /> Tạo hồ sơ</>}</button></div>

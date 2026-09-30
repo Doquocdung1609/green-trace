@@ -10,6 +10,7 @@ import { detectAnomalies } from "../src/services/anomalyEngine.js";
 import { validateTransition } from "../src/services/lifecycleEngine.js";
 import { calculateReadiness } from "../src/services/readinessEngine.js";
 import { calculateRisk } from "../src/services/riskProfileService.js";
+import { genericTemplateRules } from "../src/services/assetTemplateRules.js";
 
 const asset = {
   id: "a",
@@ -93,12 +94,15 @@ describe("trust and anomaly engines", () => {
       }),
       evidence("FARM_LOG", "3", { observedAt: new Date("2020-01-01") }),
     ];
-    const warnings = detectAnomalies(asset, items, [], []);
+    const warnings = detectAnomalies(asset, items, [], [], new Date(), {
+      requiredEvidence: ["CERTIFICATE"],
+      importantEvidence: ["GEO_LOCATION"],
+    });
     expect(warnings.map((w) => w.code)).toEqual(
       expect.arrayContaining([
         "GPS_OUTSIDE_DECLARED_AREA",
         "EVIDENCE_BEFORE_PLANTED",
-        "CERT_MISSING",
+        "CERTIFICATE_MISSING",
         "INDEPENDENT_VERIFICATION_MISSING",
       ]),
     );
@@ -166,9 +170,10 @@ describe("trust and anomaly engines", () => {
 
   it("clamps trust to 100 and excludes operational evidence from verification coverage", () => {
     const geo = evidence("GEO_LOCATION", "geo");
-    const approved = { evidenceId: geo.id, decision: "APPROVED", revokedAt: null, expiresAt: new Date("2030-01-01") } as Attestation;
-    const baseline = calculateTrust(asset, [geo], [approved], [], new Date("2026-01-01"));
-    const withOperational = calculateTrust(asset, [geo, evidence("PHOTO_CARE", "care")], [approved], [], new Date("2026-01-01"));
+    const approved = { evidenceId: geo.id, decision: "APPROVED", revokedAt: null, expiresAt: new Date("2030-01-01"), chainStatus: "CONFIRMED" } as Attestation;
+    const rules = { ...genericTemplateRules, requiredEvidence: ["GEO_LOCATION"], importantEvidence: ["GEO_LOCATION"] };
+    const baseline = calculateTrust(asset, [geo], [approved], [], new Date("2026-01-01"), rules);
+    const withOperational = calculateTrust(asset, [geo, evidence("PHOTO_CARE", "care")], [approved], [], new Date("2026-01-01"), rules);
     expect(baseline.verificationScore).toBe(30);
     expect(withOperational.verificationScore).toBe(30);
     expect(withOperational.totalScore).toBeLessThanOrEqual(100);
@@ -180,6 +185,52 @@ describe("trust and anomaly engines", () => {
     expect(risk.biologicalRisk).toBe("HIGH");
     expect(risk.diseaseRisk).toBe("HIGH");
     expect(validateTransition("HARVESTED", "TRANSFERRED", { approvedScopes: [], evidenceTypes: [] }).ok).toBe(false);
+  });
+
+  it("calculates weather risk only from drought and flood severity", () => {
+    const disease = { severity: "HIGH", status: "OPEN", type: "DISEASE" } as import("@prisma/client").AssetIncident;
+    const drought = { severity: "LOW", status: "OPEN", type: "DROUGHT" } as import("@prisma/client").AssetIncident;
+    const risk = calculateRisk(asset, [], [disease, drought], [], []);
+    expect(risk.biologicalRisk).toBe("HIGH");
+    expect(risk.weatherRisk).toBe("LOW");
+  });
+
+  it("does not let a fresh care photo mask stale critical evidence", () => {
+    const now = new Date("2026-09-30T00:00:00Z");
+    const certificate = evidence("CERTIFICATE", "cert", {
+      observedAt: new Date("2025-07-01T00:00:00Z"),
+    });
+    const location = evidence("GEO_LOCATION", "geo-stale", {
+      observedAt: new Date("2025-08-01T00:00:00Z"),
+    });
+    const care = evidence("PHOTO_CARE", "care-fresh", { observedAt: now });
+    const attestations = [certificate, location].map(
+      (item) =>
+        ({
+          evidenceId: item.id,
+          decision: "APPROVED",
+          revokedAt: null,
+          expiresAt: new Date("2027-01-01"),
+          chainStatus: "CONFIRMED",
+        }) as Attestation,
+    );
+    const rules = {
+      ...genericTemplateRules,
+      requiredEvidence: ["CERTIFICATE", "GEO_LOCATION"],
+      importantEvidence: ["CERTIFICATE", "GEO_LOCATION"],
+    };
+    const withoutCare = calculateTrust(asset, [certificate, location], attestations, [], now, rules);
+    const withCare = calculateTrust(asset, [certificate, location, care], attestations, [], now, rules);
+    expect(withCare.freshnessScore).toBe(withoutCare.freshnessScore);
+    expect(withCare.freshnessScore).toBe(0);
+  });
+
+  it("does not count expired or revoked attestations", () => {
+    const geo = evidence("GEO_LOCATION", "geo-active-test");
+    const rules = { ...genericTemplateRules, requiredEvidence: ["GEO_LOCATION"], importantEvidence: ["GEO_LOCATION"] };
+    const expired = { evidenceId: geo.id, decision: "APPROVED", revokedAt: null, expiresAt: new Date("2025-01-01"), chainStatus: "CONFIRMED" } as Attestation;
+    const revoked = { evidenceId: geo.id, decision: "APPROVED", revokedAt: new Date("2025-01-01"), expiresAt: new Date("2030-01-01"), chainStatus: "CONFIRMED" } as Attestation;
+    expect(calculateTrust(asset, [geo], [expired, revoked], [], new Date("2026-01-01"), rules).verificationScore).toBe(0);
   });
 
   it("detects expired attestations and lifecycle conflicts", () => {

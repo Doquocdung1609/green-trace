@@ -5,39 +5,48 @@ import { validate } from "../middleware/validate.js";
 import { validateTransition } from "../services/lifecycleEngine.js";
 import { recalculateTrust } from "../services/trustProfileService.js";
 import { lifecycleSchema } from "../validators/schemas.js";
+import { assertAssetAccess, AssetAccessError } from "../services/assetAccessService.js";
 
 export const lifecycleRouter = Router();
-lifecycleRouter.get("/assets/:id/lifecycle", requireAuth, async (req, res) =>
+lifecycleRouter.get("/assets/:id/lifecycle", requireAuth, async (req, res) => {
+  try {
+    await assertAssetAccess(req.user!, String(req.params.id));
+  } catch (error) {
+    if (error instanceof AssetAccessError)
+      return res.status(error.status).json({ error: error.message });
+    throw error;
+  }
   res.json({
     events: await prisma.lifecycleEvent.findMany({
       where: { assetId: String(req.params.id) },
       orderBy: { occurredAt: "asc" },
     }),
-  }),
-);
+  });
+});
 lifecycleRouter.post(
   "/assets/:id/lifecycle",
   requireAuth,
   requireRole("operator", "admin"),
   validate(lifecycleSchema),
   async (req, res) => {
+    try {
+      await assertAssetAccess(req.user!, String(req.params.id), "manage");
+    } catch (error) {
+      if (error instanceof AssetAccessError)
+        return res.status(error.status).json({ error: error.message });
+      throw error;
+    }
     const asset = await prisma.asset.findUnique({
       where: { id: String(req.params.id) },
       include: { evidence: true, attestations: true },
     });
     if (!asset)
       return res.status(404).json({ error: "Không tìm thấy tài sản" });
-    if (
-      req.user!.role === "operator" &&
-      asset.organizationId !== req.user!.organizationId
-    )
-      return res
-        .status(403)
-        .json({ error: "Không có quyền cập nhật vòng đời" });
     const approvedScopes = asset.attestations
       .filter(
         (a) =>
           a.decision === "APPROVED" &&
+          a.chainStatus === "CONFIRMED" &&
           !a.revokedAt &&
           (!a.expiresAt || a.expiresAt > new Date()),
       )

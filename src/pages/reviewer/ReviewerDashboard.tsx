@@ -23,6 +23,11 @@ export function ReviewerDashboard() {
     onSuccess: async () => { await client.invalidateQueries({ queryKey: ["review-cases"] }); notify("Đã lưu quyết định review case"); },
     onError: (reason) => notify("Không thể lưu quyết định", { tone: "error", description: reason instanceof Error ? reason.message : "Vui lòng thử lại." }),
   });
+  const claim = useMutation({
+    mutationFn: (id: string) => api.post(`/review-cases/${id}/claim`),
+    onSuccess: async () => { await client.invalidateQueries({ queryKey: ["review-cases"] }); notify("Đã claim review case"); },
+    onError: (reason) => notify("Không thể claim case", { tone: "error", description: reason instanceof Error ? reason.message : "Case có thể đã được reviewer khác nhận." }),
+  });
   if (isLoading) return <LoadingSkeleton cards={4} label="Đang tải review case" />;
   if (error) return <EmptyState title="Không thể tải review case" description="Hãy kiểm tra API và thử lại." />;
   const cases = data?.cases ?? [];
@@ -38,7 +43,7 @@ export function ReviewerDashboard() {
           <div><strong>Khoảng trống readiness</strong><span>{item.asset.readinessProfiles?.flatMap((profile) => profile.missingItems).join(" · ") || "Không có"}</span></div>
         </div>
         <Link className="text-link" to={`/passport/${item.asset.assetCode}`}>Mở hộ chiếu công khai</Link>
-        {item.status === "PENDING" ? <><label>Ghi chú<textarea value={notes[item.id] ?? ""} onChange={(event) => setNotes((current) => ({ ...current, [item.id]: event.target.value }))} /></label><div className="card-actions"><button type="button" className="button secondary compact" onClick={() => decide.mutate({ id: item.id, decision: "NOT_READY" })}>Chưa sẵn sàng</button><button type="button" className="button secondary compact" onClick={() => decide.mutate({ id: item.id, decision: "NEEDS_SUPPLEMENT" })}>Cần bổ sung</button><button type="button" className="button primary compact" onClick={() => decide.mutate({ id: item.id, decision: "READY_FOR_REVIEW" })}>Sẵn sàng review</button></div></> : <p>{item.notes}</p>}
+        {item.status === "PENDING" ? <div className="card-actions"><button type="button" className="button primary compact" disabled={claim.isPending} onClick={() => claim.mutate(item.id)}>Claim hồ sơ</button></div> : item.status === "CLAIMED" ? <><label>Ghi chú<textarea value={notes[item.id] ?? ""} onChange={(event) => setNotes((current) => ({ ...current, [item.id]: event.target.value }))} /></label><div className="card-actions"><button type="button" className="button secondary compact" onClick={() => decide.mutate({ id: item.id, decision: "NOT_READY" })}>Chưa sẵn sàng</button><button type="button" className="button secondary compact" onClick={() => decide.mutate({ id: item.id, decision: "NEEDS_SUPPLEMENT" })}>Cần bổ sung</button><button type="button" className="button primary compact" onClick={() => decide.mutate({ id: item.id, decision: "READY_FOR_REVIEW" })}>Sẵn sàng review</button></div></> : <p>{item.notes}</p>}
       </article>)}</div> : <EmptyState title="Chưa có review case" description="Operator hoặc buyer có thể gửi dossier theo mục đích cụ thể." />}
     </section>
   </div>;

@@ -31,6 +31,9 @@ export function BuyerAssetDetail() {
   const verifiedEvidence = asset.evidence?.filter((item) => item.verificationStatus === "APPROVED") ?? [];
   const openIncidents = asset.incidents?.filter((item) => item.status !== "RESOLVED") ?? [];
   const latestMeasurements = [...(asset.measurements ?? [])].sort((a, b) => new Date(b.observedAt).getTime() - new Date(a.observedAt).getTime()).slice(0, 4);
+  const currentRight = [...(asset.rightsRecords ?? [])]
+    .filter((item) => !item.validUntil || new Date(item.validUntil).getTime() > Date.now())
+    .sort((a, b) => new Date(b.validFrom).getTime() - new Date(a.validFrom).getTime())[0];
   const custody = asset.custodyRecords?.find((item) => item.status === "ACTIVE");
   const care = asset.careAgreements?.find((item) => item.status === "ACTIVE");
 
@@ -43,7 +46,7 @@ export function BuyerAssetDetail() {
         <dl className="detail-list"><dt>Mã tài sản</dt><dd>{asset.assetCode}</dd><dt>Loài</dt><dd>{asset.species}</dd><dt>Cấp tài sản</dt><dd>{asset.assetLevel}</dd><dt>Khu vực</dt><dd>{asset.region}</dd><dt>Giá giao dịch</dt><dd>{new Intl.NumberFormat("vi-VN", { style: "currency", currency: transaction.currency }).format(transaction.price)}</dd><dt>Lưu ký sau bán</dt><dd>{transaction.custodyAfterSale}</dd></dl>
       </section>
       <section className="panel"><SectionHeader title="Quyền, lưu ký & chăm sóc" description="Giao dịch quyền không mặc nhiên di chuyển tài sản vật lý." />
-        <dl className="detail-list"><dt>Khai báo quyền</dt><dd>{asset.rightsRecords?.[0]?.holder ?? "Chưa có"} · {asset.rightsRecords?.[0]?.verifiedStatus ?? "PENDING"}</dd><dt>Đơn vị lưu ký</dt><dd>{custody?.physicalCustodian ?? "Chưa xác định"}</dd><dt>Địa điểm lưu ký</dt><dd>{custody?.location ?? "Chưa xác định"}</dd><dt>Chăm sóc</dt><dd>{care ? `${care.careFrequency} · ${care.responsibility}` : "Chưa có thỏa thuận"}</dd></dl>
+        <dl className="detail-list"><dt>Quyền hiện hành</dt><dd>{currentRight ? `${currentRight.holder} · ${currentRight.rightType} · ${currentRight.verifiedStatus}` : "Chưa có"}</dd><dt>Đơn vị lưu ký</dt><dd>{custody?.physicalCustodian ?? "Chưa xác định"}</dd><dt>Địa điểm lưu ký</dt><dd>{custody?.location ?? "Chưa xác định"}</dd><dt>Chăm sóc</dt><dd>{care ? `${care.careFrequency} · ${care.responsibility}` : "Chưa có thỏa thuận"}</dd></dl>
       </section>
     </div>
     <div className="two-columns">

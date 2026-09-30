@@ -20,6 +20,7 @@ export type EvidenceType =
   | "BIOLOGICAL_INCIDENT"
   | "HARVEST_RECORD"
   | "TRANSACTION_DOCUMENT"
+  | "INCIDENT_RESOLUTION"
   | "OTHER";
 
 export type VerificationScope =
@@ -171,6 +172,7 @@ export interface RiskProfile {
   freshnessRisk: RiskLevel;
   certificateRisk: RiskLevel;
   custodyRisk: RiskLevel;
+  weatherRisk: RiskLevel;
   operationalRisk: RiskLevel;
   openIncidentCount: number;
   reasons: string[];
@@ -182,11 +184,11 @@ export interface ReadinessProfile {
   missingItems: string[];
 }
 export interface BiologicalMeasurement { id: string; measurementType: string; value: string; unit: string; observedAt: string; verificationStatus: string }
-export interface AssetIncident { id: string; type: string; severity: RiskLevel; detectedAt: string; description?: string; status: string; verificationStatus: string }
-export interface RightsRecord { id: string; rightType: string; holder: string; validFrom: string; validUntil?: string | null; verifiedStatus: string }
+export interface AssetIncident { id: string; type: string; severity: RiskLevel; detectedAt: string; description?: string; status: string; verificationStatus: string; resolutionEvidenceId?: string | null }
+export interface RightsRecord { id: string; rightType: string; holder: string; basisDocumentEvidenceId?: string | null; validFrom: string; validUntil?: string | null; verifiedStatus: string }
 export interface CustodyRecord { id: string; physicalCustodian: string; location: string; startAt: string; endAt?: string | null; status: string }
 export interface CareAgreement { id: string; serviceTerms: string; careFrequency: string; responsibility: string; riskAllocationSummary: string; status: string; startsAt: string }
-export interface AssetOffer { id: string; assetId: string; askingPrice: number; currency: string; status: string; careAfterSaleAvailable: boolean; careTermsSummary?: string | null; asset?: Asset }
+export interface AssetOffer { id: string; assetId: string; askingPrice: number; currency: string; status: string; reservedBuyerId?: string | null; reservedAt?: string | null; expiresAt?: string | null; careAfterSaleAvailable: boolean; careTermsSummary?: string | null; asset?: Asset }
 export interface AssetTransaction { id: string; assetId?: string; offerId?: string | null; buyerId?: string; status: string; price: number; currency: string; custodyAfterSale: string; transactionAt: string; asset: Asset; offer?: AssetOffer | null; buyer?: { id: string; fullName: string; email: string } }
 export interface FulfillmentRequest { id: string; assetId: string; type: string; status: string; requestedAt: string; scheduledAt?: string | null; completedAt?: string | null; notes?: string | null }
 export interface AssetValuation { id: string; referenceValue: number; currency: string; valuationSource: string; valuationMethod: string; valuedAt: string; verificationStatus: string }

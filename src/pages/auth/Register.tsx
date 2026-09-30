@@ -1,4 +1,4 @@
-import { ArrowRight, BriefcaseBusiness, Eye, EyeOff, Leaf, LockKeyhole, Mail, MapPin, Phone, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Leaf, LockKeyhole, Mail, Phone, ShieldCheck, UserRound } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
@@ -21,9 +21,7 @@ export function Register() {
         password: String(data.get("password")),
         fullName: String(data.get("fullName")),
         phone: String(data.get("phone") || ""),
-        role: data.get("role") as "operator" | "reviewer" | "buyer",
-        organizationName: String(data.get("organizationName") || ""),
-        region: String(data.get("region") || ""),
+        role: "buyer",
       });
       navigate(`/${user.role}`);
     } catch (reason) {
@@ -50,7 +48,7 @@ export function Register() {
       <main className="auth-card">
         <div>
           <h2>Tạo tài khoản</h2>
-          <p>Verifier và admin được cấp quyền qua quản trị viên.</p>
+          <p>Đăng ký công khai dành cho người mua. Các vai trò nghiệp vụ được quản trị viên cấp.</p>
         </div>
         <form onSubmit={submit}>
           <div className="form-grid">
@@ -71,24 +69,8 @@ export function Register() {
               <span className="input-with-icon"><LockKeyhole size={18} aria-hidden="true" /><input name="password" type={showPassword ? "text" : "password"} minLength={10} maxLength={128} value={password} onChange={(event) => setPassword(event.target.value)} aria-describedby="password-hint" placeholder="Tạo mật khẩu" required /><button type="button" onClick={() => setShowPassword((current) => !current)} aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></span>
               <span id="password-hint" className={password && password.length < 10 ? "field-help field-invalid" : "field-help"}>{password.length}/10 ký tự tối thiểu</span>
             </label>
-            <label>
-              <span>Vai trò <span className="required" aria-hidden="true">*</span></span>
-              <span className="input-with-icon"><ShieldCheck size={18} aria-hidden="true" /><select name="role">
-                <option value="operator">Người quản lý tài sản</option>
-                <option value="reviewer">Bên xem hồ sơ</option>
-                <option value="buyer">Người mua tài sản</option>
-              </select></span>
-            </label>
-            <label>
-              Tổ chức
-              <span className="input-with-icon"><BriefcaseBusiness size={18} aria-hidden="true" /><input name="organizationName" placeholder="Nhập tên tổ chức" /></span>
-            </label>
-            <label className="full">
-              Khu vực
-              <span className="input-with-icon"><MapPin size={18} aria-hidden="true" /><input name="region" placeholder="Tỉnh/thành, quận/huyện, xã/phường" /></span>
-            </label>
           </div>
-          <div className="inline-note"><ShieldCheck size={18} /><span><strong>Lưu ý về vai trò:</strong> Verifier và Admin được quản trị viên cấp quyền sau khi hồ sơ được phê duyệt.</span></div>
+          <div className="inline-note"><ShieldCheck size={18} /><span><strong>Phân quyền an toàn:</strong> Operator, reviewer, verifier và admin chỉ được provision qua quản trị viên hoặc dữ liệu demo.</span></div>
           {error && <p className="form-error" role="alert">{error}</p>}
           <button className="button primary wide" disabled={busy}>
             {busy ? "Đang tạo…" : <>Tạo tài khoản <ArrowRight size={18} /></>}

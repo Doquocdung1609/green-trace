@@ -15,9 +15,7 @@ export interface RegisterInput {
   password: string;
   fullName: string;
   phone?: string;
-  role: "operator" | "reviewer" | "buyer";
-  organizationName?: string;
-  region?: string;
+  role?: "buyer";
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

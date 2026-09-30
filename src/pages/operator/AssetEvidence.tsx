@@ -79,11 +79,18 @@ export function AssetEvidence() {
     const metadata = String(body.get("metadata") ?? "").trim();
     const latitude = String(body.get("latitude") ?? "");
     const longitude = String(body.get("longitude") ?? "");
+    const incidentId = String(body.get("incidentId") ?? "");
     body.delete("metadata");
     body.delete("latitude");
     body.delete("longitude");
+    body.delete("incidentId");
     if (evidenceType === "GEO_LOCATION") {
       body.set("metadataJson", JSON.stringify({ latitude: Number(latitude), longitude: Number(longitude), note: metadata || undefined }));
+    } else if (evidenceType === "INCIDENT_RESOLUTION") {
+      body.set(
+        "metadataJson",
+        JSON.stringify({ incidentId, note: metadata || undefined }),
+      );
     } else if (metadata) {
       try {
         JSON.parse(metadata);
@@ -203,7 +210,7 @@ export function AssetEvidence() {
         </section>
         <form className="panel compact-form" onSubmit={submitEvidence}>
           <SectionHeader title="Thêm bằng chứng" description="Tệp sẽ được băm SHA-256 sau khi tải lên." icon={FilePlus2} />
-          <label>Loại<select name="type" value={evidenceType} onChange={(event) => setEvidenceType(event.target.value as EvidenceType)}><option>PHOTO</option><option>PHOTO_CARE</option><option>GEO_LOCATION</option><option>IOT_READING</option><option>FARM_LOG</option><option>CARE_NOTE</option><option>ENVIRONMENT_READING</option><option>CERTIFICATE</option><option>INSPECTION</option><option>LAB_RESULT</option><option>PROPAGATION_SOURCE</option><option>AGE_DOCUMENT</option><option>RIGHTS_DOCUMENT</option><option>CUSTODY_DOCUMENT</option><option>CARE_AGREEMENT</option><option>HARVEST_RECORD</option><option>TRANSACTION_DOCUMENT</option><option>OTHER</option></select></label>
+          <label>Loại<select name="type" value={evidenceType} onChange={(event) => setEvidenceType(event.target.value as EvidenceType)}><option>PHOTO</option><option>PHOTO_CARE</option><option>GEO_LOCATION</option><option>IOT_READING</option><option>FARM_LOG</option><option>CARE_NOTE</option><option>ENVIRONMENT_READING</option><option>CERTIFICATE</option><option>INSPECTION</option><option>LAB_RESULT</option><option>PROPAGATION_SOURCE</option><option>AGE_DOCUMENT</option><option>RIGHTS_DOCUMENT</option><option>CUSTODY_DOCUMENT</option><option>CARE_AGREEMENT</option><option>HARVEST_RECORD</option><option>TRANSACTION_DOCUMENT</option><option>INCIDENT_RESOLUTION</option><option>OTHER</option></select></label>
           <label>Tiêu đề<input name="title" required /></label>
           <label>Nguồn<input name="source" placeholder="Cán bộ hiện trường / thiết bị" required /></label>
           <label>Kiểu nguồn<select name="sourceType" defaultValue="OPERATOR"><option>OPERATOR</option><option>DEVICE</option><option>THIRD_PARTY</option><option>DOCUMENT</option><option>SYSTEM</option></select></label>
@@ -212,6 +219,7 @@ export function AssetEvidence() {
           <label>Mô tả<textarea name="description" rows={3} maxLength={3000} /></label>
           {evidenceType === "CERTIFICATE" ? <div className="form-grid"><label>Hiệu lực từ<input name="validFrom" type="date" /></label><label>Hiệu lực đến<input name="validUntil" type="date" required /></label></div> : null}
           {evidenceType === "GEO_LOCATION" ? <div className="form-grid"><label>Vĩ độ<input name="latitude" type="number" min="-90" max="90" step="any" required /></label><label>Kinh độ<input name="longitude" type="number" min="-180" max="180" step="any" required /></label></div> : null}
+          {evidenceType === "INCIDENT_RESOLUTION" ? <label>Sự cố cần khắc phục<select name="incidentId" required defaultValue=""><option value="" disabled>Chọn sự cố đang mở</option>{asset.incidents?.filter((incident) => incident.status !== "RESOLVED").map((incident) => <option key={incident.id} value={incident.id}>{incident.type} · {incident.severity} · {incident.status}</option>)}</select></label> : null}
           <label>{evidenceType === "GEO_LOCATION" ? "Ghi chú vị trí" : "Metadata JSON (không bắt buộc)"}<textarea name="metadata" rows={2} placeholder={evidenceType === "GEO_LOCATION" ? "Mốc địa hình hoặc phương pháp đo…" : "{\"deviceId\":\"...\"}"} /></label>
           <label>Tệp<input name="file" type="file" accept="image/*,.pdf,application/json,text/plain" required /></label>
           <button className="button primary" disabled={evidenceBusy}>{evidenceBusy ? "Đang tải lên và tạo hash…" : "Tải lên và tạo hash"}</button>

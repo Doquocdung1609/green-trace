@@ -2,11 +2,12 @@ import { prisma } from "../db/prisma.js";
 import { recalculateReadinessProfiles } from "./readinessEngine.js";
 import { recalculateRisk } from "./riskProfileService.js";
 import { calculateTrust } from "./trustEngine.js";
+import { rulesForTemplate } from "./assetTemplateRules.js";
 
 export async function recalculateTrust(assetId: string) {
   const asset = await prisma.asset.findUnique({
     where: { id: assetId },
-    include: { evidence: true, attestations: true, lifecycleEvents: true },
+    include: { evidence: true, attestations: true, lifecycleEvents: true, template: true },
   });
   if (!asset) throw new Error("Không tìm thấy tài sản");
   const profile = calculateTrust(
@@ -14,6 +15,8 @@ export async function recalculateTrust(assetId: string) {
     asset.evidence,
     asset.attestations,
     asset.lifecycleEvents,
+    new Date(),
+    rulesForTemplate(asset.template),
   );
   const { warnings, ...scores } = profile;
   const saved = await prisma.trustProfile.upsert({

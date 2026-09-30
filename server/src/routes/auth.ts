@@ -42,25 +42,13 @@ authRouter.post(
     const email = req.body.email.toLowerCase();
     if (await prisma.user.findUnique({ where: { email } }))
       return res.status(409).json({ error: "Email đã được sử dụng" });
-    const organization = req.body.organizationName
-      ? await prisma.organization.upsert({
-          where: { name: req.body.organizationName },
-          create: {
-            name: req.body.organizationName,
-            type: "ASSET_OPERATOR",
-            region: req.body.region || "Chưa khai báo",
-          },
-          update: {},
-        })
-      : null;
     const user = await prisma.user.create({
       data: {
         email,
         passwordHash: await bcrypt.hash(req.body.password, 12),
         fullName: req.body.fullName,
         phone: req.body.phone,
-        role: req.body.role,
-        organizationId: organization?.id,
+        role: "buyer",
       },
       include: { organization: true },
     });

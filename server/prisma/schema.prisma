@@ -45,6 +45,7 @@ model User {
   measurements           BiologicalMeasurement[] @relation("MeasurementReporter")
   incidents              AssetIncident[]         @relation("IncidentReporter")
   transactionsBought     AssetTransaction[]      @relation("TransactionBuyer")
+  reservedOffers         AssetOffer[]            @relation("ReservedBuyer")
   reviewCasesRequested   ReviewCase[]            @relation("ReviewRequester")
   reviewCasesAssigned    ReviewCase[]            @relation("ReviewAssignee")
   fulfillmentRequests    FulfillmentRequest[]    @relation("FulfillmentRequester")
@@ -57,6 +58,7 @@ model AssetTemplate {
   name                       String
   version                    Int                  @default(1)
   assetType                  String
+  prefix                     String               @default("GN")
   active                     Boolean              @default(true)
   requiredIdentityFieldsJson String
   optionalFieldsJson         String
@@ -197,6 +199,7 @@ model Evidence {
   careAgreementDocuments CareAgreement[]
   transactionDocuments   AssetTransaction[]
   valuationDocuments     AssetValuation[]
+  incidentResolutions    AssetIncident[]         @relation("IncidentResolutionEvidence")
 
   @@index([assetId, contentHash])
   @@index([type, verificationStatus])
@@ -279,22 +282,24 @@ model BiologicalMeasurement {
 }
 
 model AssetIncident {
-  id                 String    @id @default(cuid())
-  assetId            String
-  type               String
-  severity           String
-  detectedAt         DateTime
-  reportedById       String
-  description        String
-  evidenceIds        String    @default("[]")
-  verificationStatus String    @default("NOT_REQUIRED")
-  status             String    @default("OPEN")
-  resolvedAt         DateTime?
-  resolutionNote     String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-  asset              Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  reportedBy         User      @relation("IncidentReporter", fields: [reportedById], references: [id])
+  id                   String    @id @default(cuid())
+  assetId              String
+  type                 String
+  severity             String
+  detectedAt           DateTime
+  reportedById         String
+  description          String
+  evidenceIds          String    @default("[]")
+  verificationStatus   String    @default("NOT_REQUIRED")
+  status               String    @default("OPEN")
+  resolvedAt           DateTime?
+  resolutionNote       String?
+  resolutionEvidenceId String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  asset                Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  reportedBy           User      @relation("IncidentReporter", fields: [reportedById], references: [id])
+  resolutionEvidence   Evidence? @relation("IncidentResolutionEvidence", fields: [resolutionEvidenceId], references: [id])
 
   @@index([assetId, status, severity])
 }
@@ -355,7 +360,7 @@ model CareAgreement {
   assetId                 String
   caretakerOrganizationId String
   serviceTerms            String
-  careFee                 Float?
+  careFee                 Decimal?
   currency                String          @default("VND")
   careFrequency           String
   responsibility          String
@@ -395,17 +400,21 @@ model AssetOffer {
   id                     String             @id @default(cuid())
   assetId                String
   saleMode               String             @default("OUTRIGHT_PURCHASE")
-  askingPrice            Float
+  askingPrice            Decimal
   currency               String             @default("VND")
   sellerOrganizationId   String
   careAfterSaleAvailable Boolean            @default(false)
   careTermsSummary       String?
   status                 String             @default("AVAILABLE")
+  reservedBuyerId        String?
+  reservedAt             DateTime?
+  expiresAt              DateTime?
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
   asset                  Asset              @relation(fields: [assetId], references: [id], onDelete: Cascade)
   sellerOrganization     Organization       @relation("SellerOrganization", fields: [sellerOrganizationId], references: [id])
   transactions           AssetTransaction[]
+  reservedBuyer          User?              @relation("ReservedBuyer", fields: [reservedBuyerId], references: [id])
 
   @@index([status, createdAt])
 }
@@ -416,7 +425,7 @@ model AssetTransaction {
   offerId                  String?
   buyerId                  String
   sellerOrganizationId     String
-  price                    Float
+  price                    Decimal
   currency                 String       @default("VND")
   transactionAt            DateTime     @default(now())
   rightsDocumentEvidenceId String?
@@ -442,6 +451,7 @@ model ReviewCase {
   requestedById   String
   status          String    @default("PENDING")
   reviewerId      String?
+  claimedAt       DateTime?
   summarySnapshot String
   decision        String?
   notes           String?
@@ -486,7 +496,7 @@ model FulfillmentRequest {
 model AssetValuation {
   id                     String        @id @default(cuid())
   assetId                String
-  referenceValue         Float
+  referenceValue         Decimal
   currency               String        @default("VND")
   valuationSource        String
   valuationMethod        String

@@ -15,7 +15,12 @@ import {
   storeEvidence,
 } from "../services/storageService.js";
 import { recalculateTrust } from "../services/trustProfileService.js";
-import { ensureVerificationPolicy } from "../services/verificationPolicyEngine.js";
+import { resolveVerificationPolicy } from "../services/verificationPolicyEngine.js";
+import {
+  assertAssetAccess,
+  AssetAccessError,
+  canReadEvidence,
+} from "../services/assetAccessService.js";
 import {
   evidenceTypes,
   requestVerificationSchema,
@@ -46,70 +51,19 @@ const metadataSchema = z.object({
 
 export const evidenceRouter = Router();
 
-async function evidenceAccess(
-  evidence: { id: string; assetId: string; visibility: string; asset: { organizationId: string } },
-  user: NonNullable<Express.Request["user"]>,
-) {
-  if (user.role === "admin") return true;
-  if (user.role === "operator")
-    return evidence.asset.organizationId === user.organizationId;
-  if (evidence.visibility === "PUBLIC") return true;
-  if (user.role === "reviewer") {
-    if (evidence.visibility === "PARTNER") return true;
-    return Boolean(await prisma.reviewCase.findFirst({
-      where: { assetId: evidence.assetId },
-      select: { id: true },
-    }));
-  }
-  if (user.role === "buyer") {
-    if (evidence.visibility === "PRIVATE")
-      return Boolean(await prisma.assetTransaction.findFirst({
-        where: {
-          assetId: evidence.assetId,
-          buyerId: user.id,
-          status: "COMPLETED",
-          rightsDocumentEvidenceId: evidence.id,
-        },
-        select: { id: true },
-      }));
-    return Boolean(await prisma.assetTransaction.findFirst({
-      where: { assetId: evidence.assetId, buyerId: user.id, status: "COMPLETED" },
-      select: { id: true },
-    }));
-  }
-  if (user.role === "verifier") {
-    if (evidence.visibility === "PARTNER") return true;
-    const organization = user.organizationId
-      ? await prisma.organization.findUnique({ where: { id: user.organizationId } })
-      : null;
-    const request = await prisma.verificationRequest.findFirst({
-      where: {
-        evidenceId: evidence.id,
-        OR: [{ requestedVerifierId: null }, { requestedVerifierId: user.id }],
-        AND: [{ OR: [
-          { requiredVerifierCategory: null },
-          { requiredVerifierCategory: organization?.verifierCategory || "__none__" },
-        ] }],
-      },
-      include: { policy: true },
-    });
-    if (!request) return false;
-    return !(
-      request.policy?.independentOrganizationRequired &&
-      user.organizationId === evidence.asset.organizationId
-    );
-  }
-  return false;
-}
-
 evidenceRouter.get("/assets/:id/evidence", requireAuth, async (req, res) => {
+  try {
+    await assertAssetAccess(req.user!, String(req.params.id));
+  } catch (error) {
+    if (error instanceof AssetAccessError)
+      return res.status(error.status).json({ error: error.message });
+    throw error;
+  }
   const asset = await prisma.asset.findUnique({
     where: { id: String(req.params.id) },
     select: { id: true, organizationId: true },
   });
   if (!asset) return res.status(404).json({ error: "Không tìm thấy tài sản" });
-  if (req.user!.role === "operator" && asset.organizationId !== req.user!.organizationId)
-    return res.status(403).json({ error: "Không có quyền xem bằng chứng" });
   const records = await prisma.evidence.findMany({
     where: { assetId: String(req.params.id) },
     include: { attestations: true },
@@ -117,7 +71,7 @@ evidenceRouter.get("/assets/:id/evidence", requireAuth, async (req, res) => {
   });
   const evidence = [];
   for (const item of records) {
-    if (await evidenceAccess({ ...item, asset }, req.user!)) evidence.push(item);
+    if (await canReadEvidence(req.user!, { ...item, asset })) evidence.push(item);
   }
   res.json({ evidence });
 });
@@ -137,23 +91,25 @@ evidenceRouter.post(
           error: "Metadata bằng chứng không hợp lệ",
           details: parsed.error.flatten(),
         });
-    const asset = await prisma.asset.findUnique({
-      where: { id: String(req.params.id) },
-    });
-    if (!asset)
-      return res.status(404).json({ error: "Không tìm thấy tài sản" });
-    if (
-      req.user!.role === "operator" &&
-      asset.organizationId !== req.user!.organizationId
-    )
-      return res.status(403).json({ error: "Không có quyền thêm bằng chứng" });
+    let asset;
+    try {
+      asset = await assertAssetAccess(
+        req.user!,
+        String(req.params.id),
+        "manage",
+      );
+    } catch (error) {
+      if (error instanceof AssetAccessError)
+        return res.status(error.status).json({ error: error.message });
+      throw error;
+    }
     const contentHash = sha256(await readFile(req.file.path));
     const storageUri = await storeEvidence(
       req.file,
       parsed.data.visibility,
       contentHash,
     );
-    const { definition: policy, record: policyRecord } = await ensureVerificationPolicy(parsed.data.type, parsed.data.metadataJson);
+    const { definition: policy, record: policyRecord } = await resolveVerificationPolicy(asset.templateId, parsed.data.type, parsed.data.metadataJson);
     const evidence = await prisma.$transaction(async (tx) => {
       const created = await tx.evidence.create({
         data: {
@@ -208,7 +164,7 @@ evidenceRouter.get("/evidence/:id/file", requireAuth, async (req, res) => {
   });
   if (!evidence)
     return res.status(404).json({ error: "Không tìm thấy bằng chứng" });
-  if (!(await evidenceAccess(evidence, req.user!)))
+  if (!(await canReadEvidence(req.user!, evidence)))
     return res.status(403).json({ error: "Không có quyền xem tệp" });
   if (evidence.sourceType === "SYSTEM" && evidence.mimeType === "application/json")
     return res.type("application/json").send(evidence.metadataJson || "{}");
@@ -229,12 +185,14 @@ evidenceRouter.post(
     });
     if (!evidence)
       return res.status(404).json({ error: "Không tìm thấy bằng chứng" });
-    if (
-      req.user!.role === "operator" &&
-      evidence.asset.organizationId !== req.user!.organizationId
-    )
-      return res.status(403).json({ error: "Không có quyền yêu cầu xác minh" });
-    const { definition: policy, record: policyRecord } = await ensureVerificationPolicy(evidence.type, evidence.metadataJson);
+    try {
+      await assertAssetAccess(req.user!, evidence.assetId, "manage");
+    } catch (error) {
+      if (error instanceof AssetAccessError)
+        return res.status(error.status).json({ error: error.message });
+      throw error;
+    }
+    const { definition: policy, record: policyRecord } = await resolveVerificationPolicy(evidence.asset.templateId, evidence.type, evidence.metadataJson);
     if (!policy.verificationRequired)
       return res.status(409).json({ error: "Loại bằng chứng này được hệ thống kiểm tra và không cần verifier." });
     const existing = await prisma.verificationRequest.findFirst({

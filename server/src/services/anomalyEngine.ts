@@ -4,7 +4,6 @@ import type {
   Evidence,
   LifecycleEvent,
 } from "@prisma/client";
-import { isImportantEvidence } from "./verificationPolicyEngine.js";
 
 export interface Warning {
   code: string;
@@ -29,6 +28,7 @@ export function detectAnomalies(
   attestations: Attestation[],
   events: LifecycleEvent[],
   now = new Date(),
+  rules?: { requiredEvidence: string[]; importantEvidence: string[] },
 ): Warning[] {
   const warnings: Warning[] = [];
   for (const item of evidence) {
@@ -93,20 +93,25 @@ export function detectAnomalies(
       severity: "MEDIUM",
       message: "Có nội dung bằng chứng trùng hash trong cùng hồ sơ.",
     });
-  if (!evidence.some((e) => e.type === "CERTIFICATE"))
-    warnings.push({
-      code: "CERT_MISSING",
-      severity: "HIGH",
-      message: "Hồ sơ chưa có chứng nhận bắt buộc.",
-    });
+  for (const type of rules?.requiredEvidence ?? ["CERTIFICATE"]) {
+    if (!evidence.some((item) => item.type === type))
+      warnings.push({
+        code: `${type}_MISSING`,
+        severity: "HIGH",
+        message: `Hồ sơ chưa có bằng chứng bắt buộc ${type}.`,
+      });
+  }
   const importantEvidenceIds = new Set(
-    evidence.filter((item) => isImportantEvidence(item.type)).map((item) => item.id),
+    evidence
+      .filter((item) => (rules?.importantEvidence ?? ["CERTIFICATE"]).includes(item.type))
+      .map((item) => item.id),
   );
   const activeVerifiedIds = new Set(
     attestations
       .filter(
         (item) =>
           item.decision === "APPROVED" &&
+          item.chainStatus === "CONFIRMED" &&
           !item.revokedAt &&
           (!item.expiresAt || item.expiresAt >= now),
       )

@@ -3,6 +3,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from '../components/ProtectedRoute';
+import { parseTrackAsiaAddress } from '../lib/trackAsiaAddress';
 import { AuthContext, type AuthContextValue } from '../contexts/auth-context';
 import { AssetPassport } from '../pages/passport/AssetPassport';
 import type { Asset, User } from '../types/domain';
@@ -12,6 +13,16 @@ const user = { id:'u',email:'operator@test.vn',fullName:'Operator',role:'operato
 const auth = (current: User | null): AuthContextValue => ({user:current,loading:false,login:vi.fn(),register:vi.fn(),logout:vi.fn(),refresh:vi.fn()});
 
 describe('frontend role routes and trust rendering', () => {
+  it('maps TrackAsia address components without hard-coded province or district', () => {
+    expect(parseTrackAsiaAddress({
+      formatted_address: 'Đăk Hà, Kon Tum, Việt Nam',
+      address_components: [
+        { long_name: 'Kon Tum', types: ['administrative_area_level_1'] },
+        { long_name: 'Đăk Hà', types: ['administrative_area_level_2'] },
+        { long_name: 'Đăk Mar', types: ['administrative_area_level_3'] },
+      ],
+    })).toEqual({ region: 'Đăk Hà, Kon Tum, Việt Nam', province: 'Kon Tum', district: 'Đăk Hà', commune: 'Đăk Mar' });
+  });
   it('allows a configured role and redirects a different role', () => {
     const view = render(<AuthContext.Provider value={auth(user)}><MemoryRouter initialEntries={['/operator']}><Routes><Route element={<ProtectedRoute roles={['operator']}/>}><Route path="/operator" element={<div>Operator workspace</div>}/></Route><Route path="/reviewer" element={<div>Reviewer workspace</div>}/></Routes></MemoryRouter></AuthContext.Provider>);
     expect(screen.getByText('Operator workspace')).toBeInTheDocument(); view.unmount();

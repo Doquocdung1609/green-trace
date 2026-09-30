@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { randomBytes } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { canonicalHash } from "../lib/hash.js";
 import { serializeAsset } from "../lib/serializers.js";
 import { prisma } from "../db/prisma.js";
@@ -6,6 +8,11 @@ import { requireAuth, requireRole } from "../middleware/auth.js";
 import { validate } from "../middleware/validate.js";
 import { createAssetSchema, updateAssetSchema } from "../validators/schemas.js";
 import { recalculateTrust } from "../services/trustProfileService.js";
+import {
+  assertAssetAccess,
+  AssetAccessError,
+  getAccessibleAssetIds,
+} from "../services/assetAccessService.js";
 
 export const assetsRouter = Router();
 const include = {
@@ -39,20 +46,27 @@ const include = {
 } as const;
 
 assetsRouter.get("/assets", requireAuth, async (req, res) => {
-  const where =
-    req.user!.role === "operator"
-      ? { organizationId: req.user!.organizationId ?? "__none__" }
-      : {};
+  const accessibleIds = await getAccessibleAssetIds(req.user!);
+  const where = accessibleIds === null ? {} : { id: { in: accessibleIds } };
   const assets = await prisma.asset.findMany({
     where,
     include,
     orderBy: { updatedAt: "desc" },
   });
-  const mode =
-    req.user!.role === "operator" || req.user!.role === "admin"
-      ? "owner"
-      : "partner";
-  res.json({ assets: assets.map((asset) => serializeAsset(asset, mode)) });
+  res.json({
+    assets: assets.map((asset) => {
+      const mode =
+        req.user!.role === "operator" || req.user!.role === "admin"
+          ? "owner"
+          : req.user!.role === "reviewer"
+            ? "partner"
+            : req.user!.role === "buyer" &&
+                asset.transactions.some((transaction) => transaction.buyerId === req.user!.id)
+              ? "partner"
+              : "public";
+      return serializeAsset(asset, mode, req.user!.role === "buyer" ? req.user!.id : undefined);
+    }),
+  });
 });
 
 assetsRouter.post(
@@ -61,27 +75,49 @@ assetsRouter.post(
   requireRole("operator", "admin"),
   validate(createAssetSchema),
   async (req, res) => {
-    const organizationId = req.body.organizationId || req.user!.organizationId;
+    const organizationId =
+      req.user!.role === "admin"
+        ? req.body.organizationId || req.user!.organizationId
+        : req.user!.organizationId;
     if (!organizationId)
       return res
         .status(400)
         .json({ error: "Người quản lý phải thuộc một tổ chức" });
-    const sequence = await prisma.asset.count({
-      where: {
-        createdAt: { gte: new Date(`${new Date().getFullYear()}-01-01`) },
-      },
-    });
-    const assetCode = `GT-NL-${new Date().getFullYear()}-${String(sequence + 128).padStart(6, "0")}`;
-    const metadata = { ...req.body, assetCode, currentStage: "REGISTERED" };
-    const asset = await prisma.asset.create({
-      data: {
-        ...req.body,
-        organizationId,
-        custodianId: req.user!.id,
-        assetCode,
-        metadataHash: canonicalHash(metadata),
-      },
-    });
+    const template = req.body.templateId
+      ? await prisma.assetTemplate.findUnique({
+          where: { id: req.body.templateId },
+          select: { prefix: true },
+        })
+      : null;
+    const prefix = (template?.prefix || "GN")
+      .replace(/[^A-Z0-9]/gi, "")
+      .toUpperCase()
+      .slice(0, 6);
+    let asset;
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const assetCode = `GT-${prefix}-${new Date().getFullYear()}-${randomBytes(4).toString("hex").toUpperCase()}`;
+      const metadata = { ...req.body, assetCode, currentStage: "REGISTERED" };
+      try {
+        asset = await prisma.asset.create({
+          data: {
+            ...req.body,
+            organizationId,
+            custodianId: req.user!.id,
+            assetCode,
+            metadataHash: canonicalHash(metadata),
+          },
+        });
+        break;
+      } catch (error) {
+        if (
+          !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+          error.code !== "P2002"
+        )
+          throw error;
+      }
+    }
+    if (!asset)
+      return res.status(503).json({ error: "Không thể cấp mã tài sản duy nhất" });
     await prisma.lifecycleEvent.create({
       data: {
         assetId: asset.id,
@@ -106,22 +142,32 @@ assetsRouter.post(
 );
 
 assetsRouter.get("/assets/:id", requireAuth, async (req, res) => {
+  try {
+    await assertAssetAccess(req.user!, String(req.params.id));
+  } catch (error) {
+    if (error instanceof AssetAccessError)
+      return res.status(error.status).json({ error: error.message });
+    throw error;
+  }
   const asset = await prisma.asset.findUnique({
     where: { id: String(req.params.id) },
     include,
   });
   if (!asset) return res.status(404).json({ error: "Không tìm thấy tài sản" });
-  if (
-    req.user!.role === "operator" &&
-    asset.organizationId !== req.user!.organizationId
-  )
-    return res.status(403).json({ error: "Không có quyền xem tài sản này" });
+  const mode =
+    req.user!.role === "admin" || req.user!.role === "operator"
+      ? "owner"
+      : req.user!.role === "reviewer"
+        ? "partner"
+        : req.user!.role === "buyer" &&
+            asset.transactions.some((transaction) => transaction.buyerId === req.user!.id)
+          ? "partner"
+          : "public";
   res.json({
     asset: serializeAsset(
       asset,
-      req.user!.role === "admin" || req.user!.role === "operator"
-        ? "owner"
-        : "partner",
+      mode,
+      req.user!.role === "buyer" ? req.user!.id : undefined,
     ),
   });
 });
@@ -132,16 +178,18 @@ assetsRouter.patch(
   requireRole("operator", "admin"),
   validate(updateAssetSchema),
   async (req, res) => {
-    const current = await prisma.asset.findUnique({
-      where: { id: String(req.params.id) },
-    });
-    if (!current)
-      return res.status(404).json({ error: "Không tìm thấy tài sản" });
-    if (
-      req.user!.role === "operator" &&
-      current.organizationId !== req.user!.organizationId
-    )
-      return res.status(403).json({ error: "Không có quyền sửa tài sản" });
+    let current;
+    try {
+      current = await assertAssetAccess(
+        req.user!,
+        String(req.params.id),
+        "manage",
+      );
+    } catch (error) {
+      if (error instanceof AssetAccessError)
+        return res.status(error.status).json({ error: error.message });
+      throw error;
+    }
     const asset = await prisma.asset.update({
       where: { id: current.id },
       data: {
@@ -155,6 +203,13 @@ assetsRouter.patch(
 );
 
 assetsRouter.get("/assets/:id/trust-profile", requireAuth, async (req, res) => {
+  try {
+    await assertAssetAccess(req.user!, String(req.params.id));
+  } catch (error) {
+    if (error instanceof AssetAccessError)
+      return res.status(error.status).json({ error: error.message });
+    throw error;
+  }
   const profile = await prisma.trustProfile.findUnique({
     where: { assetId: String(req.params.id) },
   });
@@ -165,15 +220,31 @@ assetsRouter.post(
   "/assets/:id/recalculate-trust",
   requireAuth,
   requireRole("operator", "admin"),
-  async (req, res) => res.json(await recalculateTrust(String(req.params.id))),
+  async (req, res) => {
+    try {
+      await assertAssetAccess(req.user!, String(req.params.id), "manage");
+    } catch (error) {
+      if (error instanceof AssetAccessError)
+        return res.status(error.status).json({ error: error.message });
+      throw error;
+    }
+    res.json(await recalculateTrust(String(req.params.id)));
+  },
 );
-assetsRouter.get("/assets/:id/blockchain", requireAuth, async (req, res) =>
+assetsRouter.get("/assets/:id/blockchain", requireAuth, async (req, res) => {
+  try {
+    await assertAssetAccess(req.user!, String(req.params.id));
+  } catch (error) {
+    if (error instanceof AssetAccessError)
+      return res.status(error.status).json({ error: error.message });
+    throw error;
+  }
   res.json({
     transactions: await prisma.blockchainTransaction.findMany({
       where: { assetId: String(req.params.id) },
       orderBy: { createdAt: "desc" },
     }),
-  }),
-);
+  });
+});
 
 export { include as assetInclude };

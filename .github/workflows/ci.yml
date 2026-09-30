@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: file:./dev.db
+      JWT_SECRET: ci-only-secret-with-at-least-thirty-two-characters
+      CLIENT_ORIGIN: http://localhost:5173
+      SOLANA_VERIFY_TRANSACTIONS: "false"
+      VITE_API_BASE_URL: /api
+      VITE_SOLANA_CLUSTER: devnet
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Install API dependencies
+        run: npm --prefix server ci
+      - name: Validate and generate Prisma client
+        run: |
+          npx --prefix server prisma validate --schema=server/prisma/schema.prisma
+          npm --prefix server run prisma:generate
+      - name: Bootstrap and seed deterministic test database
+        run: |
+          npm --prefix server run db:bootstrap
+          npm --prefix server run seed
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm run test:all
+      - name: Build
+        run: npm run build:all

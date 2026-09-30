@@ -6,6 +6,12 @@ import { requireAuth, requireRole } from "../middleware/auth.js";
 import { validate } from "../middleware/validate.js";
 import { verifySolanaTransaction } from "../services/solanaService.js";
 import { recalculateTrust } from "../services/trustProfileService.js";
+import { syncDerivedVerification } from "../services/derivedVerificationService.js";
+import {
+  assertAssetAccess,
+  AssetAccessError,
+  getAccessibleAssetIds,
+} from "../services/assetAccessService.js";
 import {
   decisionSchema,
   payloadSchema,
@@ -26,13 +32,20 @@ const requestInclude = {
 async function checkEligibility(
   request: {
     requestedScope: string;
+    requestedVerifierId: string | null;
     requiredVerifierCategory: string | null;
     evidence: { submittedBy: string; submittedByUser: { organizationId: string | null } };
     policy: { requiredScope: string | null; independentOrganizationRequired: boolean; requiredVerifierCategory: string | null } | null;
   },
-  user: { id: string; organizationId: string | null },
+  user: { id: string; organizationId: string | null; role?: string },
   scope: string,
 ) {
+  if (
+    user.role !== "admin" &&
+    request.requestedVerifierId &&
+    request.requestedVerifierId !== user.id
+  )
+    return "Yêu cầu được chỉ định cho người xác minh khác";
   if (request.evidence.submittedBy === user.id)
     return "Không được tự xác minh bằng chứng do chính mình gửi";
   const expectedScope = request.policy?.requiredScope || request.requestedScope;
@@ -40,8 +53,8 @@ async function checkEligibility(
     return `Policy yêu cầu phạm vi ${expectedScope}.`;
   if (
     request.policy?.independentOrganizationRequired &&
-    user.organizationId &&
-    user.organizationId === request.evidence.submittedByUser.organizationId
+    (!user.organizationId ||
+      user.organizationId === request.evidence.submittedByUser.organizationId)
   )
     return "Policy yêu cầu người xác minh thuộc tổ chức độc lập.";
   const requiredCategory = request.policy?.requiredVerifierCategory || request.requiredVerifierCategory;
@@ -69,9 +82,13 @@ verificationRouter.get(
         { OR: [{ requiredVerifierCategory: null }, { requiredVerifierCategory: organization?.verifierCategory || "__none__" }] },
       ],
     } : {};
+    const accessibleIds = await getAccessibleAssetIds(req.user!);
     res.json({
       requests: await prisma.verificationRequest.findMany({
-        where,
+        where: {
+          ...where,
+          ...(accessibleIds === null ? {} : { assetId: { in: accessibleIds } }),
+        },
         include: requestInclude,
         orderBy: { createdAt: "desc" },
       }),
@@ -89,6 +106,13 @@ verificationRouter.get(
     });
     if (!request)
       return res.status(404).json({ error: "Không tìm thấy yêu cầu" });
+    try {
+      await assertAssetAccess(req.user!, request.assetId);
+    } catch (error) {
+      if (error instanceof AssetAccessError)
+        return res.status(error.status).json({ error: error.message });
+      throw error;
+    }
     if (
       request.requestedVerifierId &&
       request.requestedVerifierId !== req.user!.id &&
@@ -244,6 +268,7 @@ verificationRouter.post(
         },
       });
     });
+    await syncDerivedVerification(attestation.evidenceId);
     await recalculateTrust(attestation.assetId);
     res.json({ revokedAt, chainStatus: "CONFIRMED" });
   },
@@ -343,6 +368,7 @@ verificationRouter.post(
       });
       return attestation;
     });
+    await syncDerivedVerification(request.evidenceId);
     await recalculateTrust(request.assetId);
     res.json({ attestation: result });
   },
@@ -385,6 +411,7 @@ verificationRouter.post(
         },
       }),
     ]);
+    await syncDerivedVerification(request.evidenceId);
     await recalculateTrust(request.assetId);
     res.json({ status: "REJECTED" });
   },

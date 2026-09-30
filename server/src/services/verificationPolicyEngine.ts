@@ -43,6 +43,7 @@ export const verificationPolicyDefinitions: VerificationPolicyDefinition[] = [
   policy("CARE_AGREEMENT", { verificationRequired: true, requiredScope: "CUSTODY", independentOrganizationRequired: true, affectsReadiness: true }),
   policy("BIOLOGICAL_MEASUREMENT"),
   policy("BIOLOGICAL_INCIDENT", { verificationRequired: true, requiredScope: "BIOLOGICAL_HEALTH", independentOrganizationRequired: true, affectsReadiness: true }),
+  policy("INCIDENT_RESOLUTION", { verificationRequired: true, requiredScope: "BIOLOGICAL_HEALTH", independentOrganizationRequired: true, affectsReadiness: true }),
   policy("HARVEST_RECORD", { verificationRequired: true, requiredScope: "AGE_OR_LIFECYCLE", independentOrganizationRequired: true, affectsReadiness: true, affectsLifecycle: true }),
   policy("TRANSACTION_DOCUMENT", { verificationRequired: true, requiredScope: "RIGHTS", independentOrganizationRequired: true, affectsReadiness: true }),
   policy("OTHER"),
@@ -88,4 +89,21 @@ export async function ensureVerificationPolicy(type: string, metadataJson?: stri
     update: persisted,
   });
   return { definition: item, record: saved };
+}
+
+export async function resolveVerificationPolicy(
+  assetTemplateId: string | null | undefined,
+  type: string,
+  metadataJson?: string | null,
+) {
+  if (assetTemplateId) {
+    // The template lookup deliberately lives behind this abstraction so a future
+    // (templateId, evidenceType, version) schema can replace the global fallback
+    // without changing upload and incident flows.
+    await prisma.assetTemplate.findUnique({
+      where: { id: assetTemplateId },
+      select: { id: true, version: true },
+    });
+  }
+  return ensureVerificationPolicy(type, metadataJson);
 }

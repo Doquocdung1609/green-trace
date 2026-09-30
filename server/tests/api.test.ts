@@ -1,3 +1,4 @@
+import bcrypt from "bcrypt";
 import { afterAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import { app } from "../src/app.js";
@@ -5,168 +6,561 @@ import { prisma } from "../src/db/prisma.js";
 
 const operator = request.agent(app);
 const verifier = request.agent(app);
-const sameOrgVerifier = request.agent(app);
-const reviewer = request.agent(app);
-const buyer = request.agent(app);
+const reviewerA = request.agent(app);
+const reviewerB = request.agent(app);
+const buyerA = request.agent(app);
+const buyerB = request.agent(app);
+const foreignOperator = request.agent(app);
 const admin = request.agent(app);
-let assetId = "";
-let assetCode = "";
-let materialEvidenceId = "";
-let materialRequestId = "";
-let operator2Id = "";
-let buyerId = "";
 
-describe.sequential("GreenTrace 3.0 product acceptance", () => {
-  it("authenticates all product roles and exposes policy/template configuration", async () => {
-    for (const [agent, email] of [[operator, "operator@greentrace.vn"], [verifier, "verifier@greentrace.vn"], [reviewer, "reviewer@greentrace.vn"], [buyer, "buyer@greentrace.vn"], [admin, "admin@greentrace.vn"]] as const) {
-      const response = await agent.post("/api/auth/login").send({ email, password: "GreenTrace123!" });
+let templateId = "";
+let operatorAssetId = "";
+let operatorAssetCode = "";
+let buyerAId = "";
+let buyerBId = "";
+let foreignUserId = "";
+let foreignOrganizationId = "";
+let signatureCounter = 1;
+const createdAssetIds: string[] = [];
+const createdUserIds: string[] = [];
+
+const assetInput = (displayName: string, overrides: Record<string, unknown> = {}) => ({
+  templateId,
+  displayName,
+  assetType: "Dược liệu lâu năm",
+  assetLevel: "LOT",
+  species: "Sâm Ngọc Linh",
+  scientificName: "Panax vietnamensis",
+  propagationSource: "Vườn giống regression",
+  plantedAt: "2023-01-01",
+  plantedAtConfidence: "DOCUMENTED",
+  ageBasis: "DOCUMENTED",
+  managementBasis: "Hợp đồng quản lý regression",
+  description: "Hồ sơ regression đủ dài cho kiểm thử hardening GreenTrace.",
+  region: "Nam Trà My, Quảng Nam",
+  province: "Quảng Nam",
+  district: "Nam Trà My",
+  commune: "Trà Linh",
+  exactLatitude: 15.01,
+  exactLongitude: 108.01,
+  elevationMeters: 1600,
+  ...overrides,
+});
+
+async function createAsset(displayName: string, overrides: Record<string, unknown> = {}) {
+  const response = await operator.post("/api/assets").send(assetInput(displayName, overrides));
+  expect(response.status).toBe(201);
+  createdAssetIds.push(response.body.asset.id);
+  return response.body.asset as { id: string; assetCode: string };
+}
+
+async function uploadEvidence(
+  assetId: string,
+  type: string,
+  options: { visibility?: string; metadataJson?: string; title?: string } = {},
+) {
+  let call = operator
+    .post(`/api/assets/${assetId}/evidence`)
+    .field("type", type)
+    .field("title", options.title ?? `${type} regression`)
+    .field("source", "Nguồn regression")
+    .field("sourceType", "DOCUMENT")
+    .field("observedAt", new Date().toISOString())
+    .field("visibility", options.visibility ?? "PRIVATE");
+  if (options.metadataJson) call = call.field("metadataJson", options.metadataJson);
+  const response = await call.attach("file", Buffer.from(`${type}:${Date.now()}`), {
+    filename: `${type.toLowerCase()}.txt`,
+    contentType: "text/plain",
+  });
+  expect(response.status).toBe(201);
+  return response.body.evidence as { id: string; verificationStatus: string };
+}
+
+async function approveEvidence(assetId: string, evidenceId: string) {
+  const asset = await operator.get(`/api/assets/${assetId}`);
+  const verificationRequest = asset.body.asset.verificationRequests.find(
+    (item: { evidenceId: string; status: string }) =>
+      item.evidenceId === evidenceId && item.status === "PENDING",
+  );
+  expect(verificationRequest).toBeTruthy();
+  const note = "Đã kiểm tra độc lập đúng phạm vi regression.";
+  const wallet = "11111111111111111111111111111111";
+  const payload = await verifier
+    .post(`/api/verification-requests/${verificationRequest.id}/payload`)
+    .send({ scope: verificationRequest.requestedScope, note, verifierWallet: wallet });
+  expect(payload.status).toBe(200);
+  signatureCounter += 1;
+  const approved = await verifier
+    .post(`/api/verification-requests/${verificationRequest.id}/approve`)
+    .send({
+      scope: verificationRequest.requestedScope,
+      note,
+      verifierWallet: wallet,
+      payloadHash: payload.body.payloadHash,
+      txSignature: String(signatureCounter).repeat(64).slice(0, 64),
+    });
+  expect(approved.status).toBe(200);
+  return approved.body.attestation;
+}
+
+describe.sequential("GreenTrace final hardening acceptance", () => {
+  it("logs in provisioned roles and prepares a second organization", async () => {
+    for (const [agent, email] of [
+      [operator, "operator@greentrace.vn"],
+      [verifier, "verifier@greentrace.vn"],
+      [reviewerA, "reviewer@greentrace.vn"],
+      [reviewerB, "reviewer2@greentrace.vn"],
+      [buyerA, "buyer@greentrace.vn"],
+      [admin, "admin@greentrace.vn"],
+    ] as const) {
+      const response = await agent
+        .post("/api/auth/login")
+        .send({ email, password: "GreenTrace123!" });
       expect(response.status).toBe(200);
-      if (email.startsWith("buyer")) buyerId = response.body.user.id;
+      if (email === "buyer@greentrace.vn") buyerAId = response.body.user.id;
     }
     const policy = await admin.get("/api/admin/policy");
-    expect(policy.status).toBe(200);
-    expect(policy.body.verificationPolicies.length).toBeGreaterThan(10);
-    expect(policy.body.assetTemplates[0].name).toContain("Sâm Ngọc Linh");
-  });
-
-  it("creates a structured biological asset", async () => {
-    const response = await operator.post("/api/assets").send({
-      displayName: "Lô kiểm thử 3.0", assetType: "Dược liệu lâu năm", assetLevel: "LOT", species: "Sâm Ngọc Linh", scientificName: "Panax vietnamensis", propagationSource: "Vườn giống kiểm thử", plantedAt: "2023-01-01", plantedAtConfidence: "DOCUMENTED", ageBasis: "DOCUMENTED", initialQuantity: 50, quantityUnit: "cây", description: "Hồ sơ được tạo trong kiểm thử tích hợp GreenTrace 3.0.", region: "Nam Trà My, Quảng Nam", exactLatitude: 15.01, exactLongitude: 108.01,
+    templateId = policy.body.assetTemplates.find(
+      (template: { key: string }) => template.key === "PANAX_VIETNAMENSIS_LOT_V1",
+    ).id;
+    const organization = await prisma.organization.create({
+      data: {
+        name: `Regression Org ${Date.now()}`,
+        type: "COOPERATIVE",
+        region: "Kon Tum",
+      },
     });
-    expect(response.status).toBe(201);
-    assetId = response.body.asset.id;
-    assetCode = response.body.asset.assetCode;
-    expect(response.body.asset.currentStage).toBe("REGISTERED");
+    foreignOrganizationId = organization.id;
+    const user = await prisma.user.create({
+      data: {
+        email: `foreign-${Date.now()}@example.test`,
+        passwordHash: await bcrypt.hash("GreenTrace123!", 4),
+        fullName: "Foreign Operator",
+        role: "operator",
+        organizationId: organization.id,
+      },
+    });
+    foreignUserId = user.id;
+    expect(
+      (
+        await foreignOperator
+          .post("/api/auth/login")
+          .send({ email: user.email, password: "GreenTrace123!" })
+      ).status,
+    ).toBe(200);
   });
 
-  it("does not create a verifier request for operational evidence", async () => {
-    const uploaded = await operator.post(`/api/assets/${assetId}/evidence`).field("type", "PHOTO_CARE").field("title", "Ảnh chăm sóc thường kỳ").field("source", "Tổ chăm sóc").field("sourceType", "OPERATOR").field("observedAt", new Date().toISOString()).field("visibility", "PRIVATE").attach("file", Buffer.from("care photo"), { filename: "care.txt", contentType: "text/plain" });
-    expect(uploaded.status).toBe(201);
-    expect(uploaded.body.evidence.verificationStatus).toBe("NOT_REQUIRED");
-    const asset = await operator.get(`/api/assets/${assetId}`);
-    expect(asset.body.asset.verificationRequests.some((item: { evidenceId: string }) => item.evidenceId === uploaded.body.evidence.id)).toBe(false);
+  it("allows public buyer registration but blocks role and organization spoofing", async () => {
+    const email = `buyer-regression-${Date.now()}@example.test`;
+    const registered = await buyerB.post("/api/auth/register").send({
+      email,
+      password: "GreenTrace123!",
+      fullName: "Regression Buyer",
+      role: "buyer",
+    });
+    expect(registered.status).toBe(201);
+    expect(registered.body.user.role).toBe("buyer");
+    expect(registered.body.user.organizationId).toBeNull();
+    buyerBId = registered.body.user.id;
+    createdUserIds.push(buyerBId);
+
+    for (const role of ["operator", "reviewer", "verifier", "admin"]) {
+      const blocked = await request(app).post("/api/auth/register").send({
+        email: `${role}-${Date.now()}@example.test`,
+        password: "GreenTrace123!",
+        fullName: "Spoof Attempt",
+        role,
+        organizationName: "DEMO DATA · HTX Dược liệu Ngọc Linh",
+      });
+      expect(blocked.status).toBe(400);
+    }
+    expect(
+      await prisma.organization.count({
+        where: { name: "DEMO DATA · HTX Dược liệu Ngọc Linh" },
+      }),
+    ).toBe(1);
   });
 
-  it("automatically creates a material request and blocks same-organization verification", async () => {
-    const uploaded = await operator.post(`/api/assets/${assetId}/evidence`).field("type", "INSPECTION").field("title", "Biên bản kiểm tra độc lập").field("source", "Hiện trường").field("sourceType", "THIRD_PARTY").field("observedAt", new Date().toISOString()).field("visibility", "PARTNER").attach("file", Buffer.from("inspection"), { filename: "inspection.txt", contentType: "text/plain" });
-    expect(uploaded.status).toBe(201);
-    materialEvidenceId = uploaded.body.evidence.id;
-    const asset = await operator.get(`/api/assets/${assetId}`);
-    const autoRequest = asset.body.asset.verificationRequests.find((item: { evidenceId: string }) => item.evidenceId === materialEvidenceId);
-    expect(autoRequest.requestedScope).toBe("EXISTENCE");
-    materialRequestId = autoRequest.id;
-    const users = await admin.get("/api/admin/users");
-    operator2Id = users.body.users.find((item: { email: string }) => item.email === "operator2@greentrace.vn").id;
-    expect((await admin.patch(`/api/admin/users/${operator2Id}/role`).send({ role: "verifier" })).status).toBe(200);
-    expect((await sameOrgVerifier.post("/api/auth/login").send({ email: "operator2@greentrace.vn", password: "GreenTrace123!" })).status).toBe(200);
-    const blocked = await sameOrgVerifier.post(`/api/verification-requests/${materialRequestId}/payload`).send({ scope: "EXISTENCE", note: "Không được tự xác minh cùng tổ chức.", verifierWallet: "11111111111111111111111111111111" });
-    expect(blocked.status).toBe(409);
-    expect(blocked.body.error).toContain("tổ chức độc lập");
+  it("enforces centralized asset access for every non-admin role", async () => {
+    const created = await createAsset("Regression · centralized access");
+    operatorAssetId = created.id;
+    operatorAssetCode = created.assetCode;
+    expect(operatorAssetCode).toMatch(/^GT-NL-\d{4}-[A-F0-9]{8}$/);
+
+    expect((await foreignOperator.get(`/api/assets/${operatorAssetId}`)).status).toBe(403);
+    expect((await buyerB.get(`/api/assets/${operatorAssetId}`)).status).toBe(403);
+    expect((await verifier.get(`/api/assets/${operatorAssetId}`)).status).toBe(403);
+    expect((await reviewerA.get(`/api/assets/${operatorAssetId}`)).status).toBe(403);
+    expect((await admin.get(`/api/assets/${operatorAssetId}`)).status).toBe(200);
+
+    const verifierList = await verifier.get("/api/assets");
+    const buyerList = await buyerA.get("/api/assets");
+    const reviewerList = await reviewerA.get("/api/assets");
+    expect(verifierList.body.assets.length).toBeLessThan(7);
+    expect(buyerList.body.assets.length).toBeLessThan(7);
+    expect(reviewerList.body.assets).toHaveLength(0);
   });
 
-  it("allows a verifier from another organization to approve within policy scope", async () => {
-    const verifierWallet = "11111111111111111111111111111111";
-    const note = "Đã đối chiếu sự tồn tại trong phạm vi biên bản.";
-    const payload = await verifier.post(`/api/verification-requests/${materialRequestId}/payload`).send({ scope: "EXISTENCE", note, verifierWallet });
-    expect(payload.status).toBe(200);
-    const approved = await verifier.post(`/api/verification-requests/${materialRequestId}/approve`).send({ scope: "EXISTENCE", note, verifierWallet, payloadHash: payload.body.payloadHash, txSignature: "2".repeat(64) });
-    expect(approved.status).toBe(200);
-    expect(approved.body.attestation.decision).toBe("APPROVED");
+  it("keeps operational evidence out of verification and scopes verifier access", async () => {
+    const care = await uploadEvidence(operatorAssetId, "PHOTO_CARE");
+    expect(care.verificationStatus).toBe("NOT_REQUIRED");
+    const inspection = await uploadEvidence(operatorAssetId, "INSPECTION", {
+      visibility: "PARTNER",
+    });
+    expect((await verifier.get(`/api/assets/${operatorAssetId}`)).status).toBe(200);
+    expect((await verifier.get(`/api/evidence/${care.id}/file`)).status).toBe(403);
+    expect((await verifier.get(`/api/evidence/${inspection.id}/file`)).status).toBe(200);
+    await approveEvidence(operatorAssetId, inspection.id);
+    expect((await verifier.get(`/api/assets/${operatorAssetId}`)).status).toBe(403);
   });
 
-  it("raises biological risk from a material incident while keeping trust separate", async () => {
-    const before = await operator.get(`/api/assets/${assetId}`);
-    const incident = await operator.post(`/api/assets/${assetId}/incidents`).send({ type: "DISEASE", severity: "HIGH", detectedAt: new Date().toISOString(), description: "Phát hiện bệnh lá cần xử lý và xác minh.", evidenceIds: [] });
-    expect(incident.status).toBe(201);
-    expect(incident.body.incident.evidenceIds).toHaveLength(1);
-    const incidentEvidence = incident.body.incident.evidenceIds[0];
-    const incidentFile = await verifier.get(`/api/evidence/${incidentEvidence}/file`);
-    expect(incidentFile.status).toBe(200);
-    expect(incidentFile.body.severity).toBe("HIGH");
-    const risk = await operator.get(`/api/assets/${assetId}/risk`);
-    expect(["HIGH", "CRITICAL"]).toContain(risk.body.riskProfile.overallRisk);
-    const after = await operator.get(`/api/assets/${assetId}`);
-    expect(after.body.asset.trustProfile.totalScore).toBeLessThanOrEqual(before.body.asset.trustProfile.totalScore);
-    expect(after.body.asset.trustProfile.overallRisk).toBeUndefined();
-    expect(after.body.asset.riskProfile.totalScore).toBeUndefined();
-    expect((await operator.patch(`/api/incidents/${incident.body.incident.id}`).send({ status: "RESOLVED", resolutionNote: "Đã xử lý trong kiểm thử." })).status).toBe(200);
-    const resolvedRisk = await operator.get(`/api/assets/${assetId}/risk`);
-    expect(resolvedRisk.body.riskProfile.biologicalRisk).toBe("LOW");
-    expect(resolvedRisk.body.riskProfile.openIncidentCount).toBe(0);
-  });
-
-  it("records rights and custody independently", async () => {
-    expect((await operator.post(`/api/assets/${assetId}/rights`).send({ rightType: "QUYỀN SỞ HỮU", holder: "HTX kiểm thử", validFrom: "2023-01-01", verifiedStatus: "APPROVED" })).status).toBe(201);
-    expect((await operator.post(`/api/assets/${assetId}/custody`).send({ physicalCustodian: "Kho sinh học HTX", location: "Nam Trà My", startAt: "2023-01-01", status: "ACTIVE" })).status).toBe(201);
-    const current = await operator.get(`/api/assets/${assetId}`);
-    expect(current.body.asset.rightsRecords[0].holder).toBe("HTX kiểm thử");
-    expect(current.body.asset.custodyRecords[0].physicalCustodian).toBe("Kho sinh học HTX");
-  });
-
-  it("supports outright purchase without changing biological lifecycle or custody", async () => {
-    const offer = await operator.post(`/api/assets/${assetId}/offers`).send({ saleMode: "OUTRIGHT_PURCHASE", askingPrice: 123000000, currency: "VND", careAfterSaleAvailable: true, careTermsSummary: "Tiếp tục chăm sóc tại HTX." });
-    expect(offer.status).toBe(201);
-    expect((await buyer.post(`/api/offers/${offer.body.offer.id}/purchase-request`).send({ notes: "Đề nghị mua kiểm thử" })).status).toBe(201);
-    const rightsDocument = await operator.post(`/api/assets/${assetId}/evidence`).field("type", "RIGHTS_DOCUMENT").field("title", "Tài liệu chuyển quyền").field("source", "Bộ phận pháp lý").field("sourceType", "DOCUMENT").field("observedAt", new Date().toISOString()).field("visibility", "PRIVATE").attach("file", Buffer.from("rights"), { filename: "rights.txt", contentType: "text/plain" });
-    const completed = await operator.post(`/api/assets/${assetId}/transactions`).send({ offerId: offer.body.offer.id, buyerId, rightsDocumentEvidenceId: rightsDocument.body.evidence.id, custodyAfterSale: "SELLER_OR_HTX", notes: "Hoàn tất giao dịch kiểm thử" });
-    expect(completed.status).toBe(201);
-    const current = await operator.get(`/api/assets/${assetId}`);
-    expect(current.body.asset.currentStage).toBe("REGISTERED");
-    expect(current.body.asset.transactionStage).toBe("SOLD");
-    expect(current.body.asset.custodyRecords[0].physicalCustodian).toBe("Kho sinh học HTX");
-    const mine = await buyer.get("/api/my-assets");
-    expect(mine.body.transactions.some((item: { assetId: string; status: string }) => item.assetId === assetId && item.status === "COMPLETED")).toBe(true);
-    const buyerDetail = await buyer.get(`/api/my-assets/${assetId}`);
-    expect(buyerDetail.status).toBe(200);
-    expect(buyerDetail.body.transaction.price).toBe(123000000);
-    expect(buyerDetail.body.asset.exactLatitude).toBeUndefined();
-    expect(buyerDetail.body.asset.exactLongitude).toBeUndefined();
-    const partnerView = await buyer.get(`/api/assets/${assetId}`);
-    expect(partnerView.body.asset.exactLatitude).toBeUndefined();
-    expect(partnerView.body.asset.exactLongitude).toBeUndefined();
-    expect(partnerView.body.asset.evidence.some((item: { visibility: string }) => item.visibility === "PRIVATE")).toBe(false);
-    const buyerEvidence = await buyer.get(`/api/assets/${assetId}/evidence`);
-    expect(buyerEvidence.body.evidence.some((item: { id: string }) => item.id === rightsDocument.body.evidence.id)).toBe(true);
-    expect((await buyer.get(`/api/evidence/${rightsDocument.body.evidence.id}/file`)).status).toBe(200);
-    const fulfillment = await buyer.post(`/api/assets/${assetId}/fulfillment`).send({ type: "HARVEST", notes: "Yêu cầu thu hoạch kiểm thử" });
-    expect(fulfillment.status).toBe(201);
-    expect((await operator.patch(`/api/fulfillment/${fulfillment.body.request.id}`).send({ status: "SCHEDULED" })).status).toBe(200);
-    const blockedCompletion = await operator.patch(`/api/fulfillment/${fulfillment.body.request.id}`).send({ status: "COMPLETED" });
-    expect(blockedCompletion.status).toBe(409);
-    expect(blockedCompletion.body.error).toContain("HARVEST_RECORD");
-    const afterSchedule = await operator.get(`/api/assets/${assetId}`);
-    expect(afterSchedule.body.asset.currentStage).toBe("REGISTERED");
-    expect(afterSchedule.body.asset.transactionStage).toBe("DELIVERY_REQUESTED");
-  });
-
-  it("creates purpose-specific review cases", async () => {
-    const created = await operator.post("/api/review-cases").send({ purpose: "REAL_ASSET_TRANSFER", assetId });
+  it("prevents client-approved rights and derives rights from an active attestation", async () => {
+    const rightsDocument = await uploadEvidence(operatorAssetId, "RIGHTS_DOCUMENT");
+    const missingBasis = await operator.post(`/api/assets/${operatorAssetId}/rights`).send({
+      rightType: "CONTRACTUAL_ASSET_RIGHT",
+      holder: "Regression HTX",
+      validFrom: "2023-01-01",
+    });
+    expect(missingBasis.status).toBe(400);
+    const forged = await operator.post(`/api/assets/${operatorAssetId}/rights`).send({
+      rightType: "CONTRACTUAL_ASSET_RIGHT",
+      holder: "Regression HTX",
+      basisDocumentEvidenceId: rightsDocument.id,
+      validFrom: "2023-01-01",
+      verifiedStatus: "APPROVED",
+    });
+    expect(forged.status).toBe(400);
+    const created = await operator.post(`/api/assets/${operatorAssetId}/rights`).send({
+      rightType: "CONTRACTUAL_ASSET_RIGHT",
+      holder: "Regression HTX",
+      basisDocumentEvidenceId: rightsDocument.id,
+      validFrom: "2023-01-01",
+    });
     expect(created.status).toBe(201);
-    const cases = await reviewer.get("/api/review-cases");
-    const item = cases.body.cases.find((candidate: { id: string }) => candidate.id === created.body.reviewCase.id);
-    expect(item.summary.length).toBe(2);
-    expect(item.asset.exactLatitude).toBeUndefined();
-    expect(item.asset.exactLongitude).toBeUndefined();
-    expect(item.requestedBy.passwordHash).toBeUndefined();
-    expect(item.asset.evidence.every((evidence: { storageUri?: string }) => evidence.storageUri === undefined)).toBe(true);
-    expect((await reviewer.patch(`/api/review-cases/${item.id}`).send({ decision: "NEEDS_SUPPLEMENT", notes: "Cần bổ sung xác minh tài liệu quyền trước khi review." })).status).toBe(200);
+    expect(created.body.record.verifiedStatus).toBe("PENDING");
+    await approveEvidence(operatorAssetId, rightsDocument.id);
+    const rights = await operator.get(`/api/assets/${operatorAssetId}/rights`);
+    expect(rights.body.records[0].verifiedStatus).toBe("APPROVED");
   });
 
-  it("redacts exact GPS, geo metadata, private documents and commercial terms publicly", async () => {
-    await operator.post(`/api/assets/${assetId}/evidence`).field("type", "GEO_LOCATION").field("title", "Vị trí công khai kiểm thử").field("source", "Thiết bị GPS").field("sourceType", "DEVICE").field("observedAt", new Date().toISOString()).field("visibility", "PUBLIC").field("metadataJson", JSON.stringify({ latitude: 15.01, longitude: 108.01 })).attach("file", Buffer.from("gps"), { filename: "gps.txt", contentType: "text/plain" });
-    const response = await request(app).get(`/api/public/passports/${assetCode}`);
+  it("requires verified resolution evidence before a HIGH incident lowers risk", async () => {
+    const incidentResponse = await operator
+      .post(`/api/assets/${operatorAssetId}/incidents`)
+      .send({
+        type: "DISEASE",
+        severity: "HIGH",
+        detectedAt: new Date().toISOString(),
+        description: "Regression HIGH disease incident.",
+        evidenceIds: [],
+      });
+    expect(incidentResponse.status).toBe(201);
+    const incident = incidentResponse.body.incident;
+    expect(
+      (
+        await operator.patch(`/api/incidents/${incident.id}`).send({
+          status: "RESOLVED",
+          resolutionNote: "Attempted self resolution",
+        })
+      ).status,
+    ).toBe(409);
+    const resolution = await uploadEvidence(operatorAssetId, "INCIDENT_RESOLUTION", {
+      metadataJson: JSON.stringify({ incidentId: incident.id }),
+    });
+    expect(
+      (
+        await operator.patch(`/api/incidents/${incident.id}`).send({
+          status: "UNDER_REVIEW",
+          resolutionNote: "Incident entered independent review.",
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await operator.patch(`/api/incidents/${incident.id}`).send({
+          status: "MITIGATING",
+          resolutionNote: "Mitigation is in progress.",
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await operator.patch(`/api/incidents/${incident.id}`).send({
+          status: "RESOLUTION_PENDING_VERIFICATION",
+          resolutionNote: "Submitted remediation evidence",
+          resolutionEvidenceId: resolution.id,
+        })
+      ).status,
+    ).toBe(200);
+    const before = await operator.get(`/api/assets/${operatorAssetId}/risk`);
+    expect(before.body.riskProfile.biologicalRisk).toBe("HIGH");
+    await approveEvidence(operatorAssetId, resolution.id);
+    const after = await operator.get(`/api/assets/${operatorAssetId}/risk`);
+    expect(after.body.riskProfile.biologicalRisk).toBe("LOW");
+    const asset = await operator.get(`/api/assets/${operatorAssetId}`);
+    expect(
+      asset.body.asset.incidents.find((item: { id: string }) => item.id === incident.id).status,
+    ).toBe("RESOLVED");
+  });
+
+  it("supports multiple purchase requests without changing the global stage and one active offer", async () => {
+    const location = await uploadEvidence(operatorAssetId, "GEO_LOCATION", {
+      metadataJson: JSON.stringify({ latitude: 15.01, longitude: 108.01 }),
+    });
+    await approveEvidence(operatorAssetId, location.id);
+    expect(
+      (
+        await operator.post(`/api/assets/${operatorAssetId}/custody`).send({
+          physicalCustodian: "Regression HTX Custody",
+          location: "Nam Trà My",
+          startAt: "2023-01-01",
+          status: "ACTIVE",
+        })
+      ).status,
+    ).toBe(201);
+    const offer = await operator.post(`/api/assets/${operatorAssetId}/offers`).send({
+      askingPrice: 123000000,
+      currency: "VND",
+      careAfterSaleAvailable: true,
+    });
+    expect(offer.status).toBe(201);
+    expect(
+      (
+        await operator.post(`/api/assets/${operatorAssetId}/offers`).send({
+          askingPrice: 125000000,
+          currency: "VND",
+          careAfterSaleAvailable: false,
+        })
+      ).status,
+    ).toBe(409);
+    expect(
+      (
+        await buyerA
+          .post(`/api/offers/${offer.body.offer.id}/purchase-request`)
+          .send({ notes: "Buyer A request" })
+      ).status,
+    ).toBe(201);
+    expect(
+      (
+        await buyerB
+          .post(`/api/offers/${offer.body.offer.id}/purchase-request`)
+          .send({ notes: "Buyer B request" })
+      ).status,
+    ).toBe(201);
+    const current = await operator.get(`/api/assets/${operatorAssetId}`);
+    expect(current.body.asset.transactionStage).toBe("AVAILABLE");
+    expect(
+      (
+        await operator
+          .post(`/api/offers/${offer.body.offer.id}/reserve`)
+          .send({ buyerId: "wrong-buyer" })
+      ).status,
+    ).toBe(409);
+    expect(
+      (
+        await operator
+          .post(`/api/offers/${offer.body.offer.id}/reserve`)
+          .send({ buyerId: buyerAId })
+      ).status,
+    ).toBe(200);
+  });
+
+  it("gates sale atomically, transitions contractual rights, and preserves custody/biology", async () => {
+    const asset = await operator.get(`/api/assets/${operatorAssetId}`);
+    const offer = asset.body.asset.offers.find(
+      (item: { status: string }) => item.status === "RESERVED",
+    );
+    const rightsDocument = asset.body.asset.evidence.find(
+      (item: { type: string; verificationStatus: string }) =>
+        item.type === "RIGHTS_DOCUMENT" && item.verificationStatus === "APPROVED",
+    );
+    const wrongBuyer = await operator.post(`/api/assets/${operatorAssetId}/transactions`).send({
+      offerId: offer.id,
+      buyerId: buyerBId,
+      rightsDocumentEvidenceId: rightsDocument.id,
+      custodyAfterSale: "SELLER_OR_HTX",
+    });
+    expect(wrongBuyer.status).toBe(409);
+    const critical = await operator
+      .post(`/api/assets/${operatorAssetId}/incidents`)
+      .send({
+        type: "PHYSICAL_DAMAGE",
+        severity: "CRITICAL",
+        detectedAt: new Date().toISOString(),
+        description: "Regression critical blocker before sale.",
+        evidenceIds: [],
+      });
+    const riskBlocked = await operator
+      .post(`/api/assets/${operatorAssetId}/transactions`)
+      .send({
+        offerId: offer.id,
+        buyerId: buyerAId,
+        rightsDocumentEvidenceId: rightsDocument.id,
+        custodyAfterSale: "SELLER_OR_HTX",
+      });
+    expect(riskBlocked.status).toBe(409);
+    expect(riskBlocked.body.error).toContain("HIGH/CRITICAL");
+    const criticalResolution = await uploadEvidence(
+      operatorAssetId,
+      "INCIDENT_RESOLUTION",
+      { metadataJson: JSON.stringify({ incidentId: critical.body.incident.id }) },
+    );
+    await operator.patch(`/api/incidents/${critical.body.incident.id}`).send({
+      status: "UNDER_REVIEW",
+      resolutionNote: "Critical incident review started",
+    });
+    await operator.patch(`/api/incidents/${critical.body.incident.id}`).send({
+      status: "MITIGATING",
+      resolutionNote: "Critical incident mitigation started",
+    });
+    await operator.patch(`/api/incidents/${critical.body.incident.id}`).send({
+      status: "RESOLUTION_PENDING_VERIFICATION",
+      resolutionNote: "Critical remediation submitted",
+      resolutionEvidenceId: criticalResolution.id,
+    });
+    await approveEvidence(operatorAssetId, criticalResolution.id);
+    const completed = await operator.post(`/api/assets/${operatorAssetId}/transactions`).send({
+      offerId: offer.id,
+      buyerId: buyerAId,
+      rightsDocumentEvidenceId: rightsDocument.id,
+      custodyAfterSale: "SELLER_OR_HTX",
+      notes: "Regression completed sale",
+    });
+    expect(completed.status).toBe(201);
+    expect(
+      (
+        await operator.post(`/api/assets/${operatorAssetId}/transactions`).send({
+          offerId: offer.id,
+          buyerId: buyerAId,
+          rightsDocumentEvidenceId: rightsDocument.id,
+          custodyAfterSale: "SELLER_OR_HTX",
+        })
+      ).status,
+    ).toBe(409);
+    const after = await operator.get(`/api/assets/${operatorAssetId}`);
+    expect(after.body.asset.currentStage).toBe("REGISTERED");
+    expect(after.body.asset.transactionStage).toBe("SOLD");
+    expect(after.body.asset.custodyRecords[0].physicalCustodian).toBe(
+      "Regression HTX Custody",
+    );
+    expect(after.body.asset.rightsRecords).toHaveLength(2);
+    expect(
+      after.body.asset.rightsRecords.some(
+        (record: { rightType: string; holder: string }) =>
+          record.rightType === "CONTRACTUAL_ECONOMIC_RIGHT" &&
+          record.holder.includes("DEMO DATA"),
+      ),
+    ).toBe(true);
+    expect(
+      after.body.asset.rightsRecords.some(
+        (record: { validUntil?: string }) => Boolean(record.validUntil),
+      ),
+    ).toBe(true);
+  });
+
+  it("blocks transaction completion when readiness or critical risk is missing", async () => {
+    const missing = await createAsset("Regression · not ready");
+    const document = await uploadEvidence(missing.id, "RIGHTS_DOCUMENT");
+    await approveEvidence(missing.id, document.id);
+    await operator.post(`/api/assets/${missing.id}/rights`).send({
+      rightType: "CONTRACTUAL_ASSET_RIGHT",
+      holder: "Regression HTX",
+      basisDocumentEvidenceId: document.id,
+      validFrom: "2023-01-01",
+    });
+    const offer = await operator.post(`/api/assets/${missing.id}/offers`).send({
+      askingPrice: 1000000,
+      currency: "VND",
+      careAfterSaleAvailable: false,
+    });
+    await buyerB
+      .post(`/api/offers/${offer.body.offer.id}/purchase-request`)
+      .send({});
+    await operator
+      .post(`/api/offers/${offer.body.offer.id}/reserve`)
+      .send({ buyerId: buyerBId });
+    const blocked = await operator.post(`/api/assets/${missing.id}/transactions`).send({
+      offerId: offer.body.offer.id,
+      buyerId: buyerBId,
+      rightsDocumentEvidenceId: document.id,
+      custodyAfterSale: "SELLER_OR_HTX",
+    });
+    expect(blocked.status).toBe(409);
+    expect(blocked.body.error).toContain("READY_FOR_REVIEW");
+  });
+
+  it("locks review cases to the first reviewer and rejects overwrite", async () => {
+    const created = await operator.post("/api/review-cases").send({
+      purpose: "REAL_ASSET_TRANSFER",
+      assetId: operatorAssetId,
+    });
+    expect(created.status).toBe(201);
+    const id = created.body.reviewCase.id;
+    expect((await reviewerA.post(`/api/review-cases/${id}/claim`)).status).toBe(200);
+    expect((await reviewerB.post(`/api/review-cases/${id}/claim`)).status).toBe(409);
+    expect((await reviewerB.get(`/api/assets/${operatorAssetId}`)).status).toBe(403);
+    expect(
+      (
+        await reviewerB.patch(`/api/review-cases/${id}`).send({
+          decision: "READY_FOR_REVIEW",
+          notes: "Reviewer B must not overwrite this claimed case.",
+        })
+      ).status,
+    ).toBe(409);
+    expect(
+      (
+        await reviewerA.patch(`/api/review-cases/${id}`).send({
+          decision: "READY_FOR_REVIEW",
+          notes: "Reviewer A completed the assigned dossier review.",
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await reviewerA.patch(`/api/review-cases/${id}`).send({
+          decision: "NOT_READY",
+          notes: "Resolved cases must be immutable for reviewers.",
+        })
+      ).status,
+    ).toBe(409);
+  });
+
+  it("redacts exact GPS, PII, private contracts, buyer and verifier identity publicly", async () => {
+    const response = await request(app).get(
+      "/api/public/passports/GT-NL-2026-DEMOF006",
+    );
     expect(response.status).toBe(200);
-    expect(response.body.asset.exactLatitude).toBeUndefined();
-    expect(response.body.asset.exactLongitude).toBeUndefined();
-    expect(response.body.asset.evidence.find((item: { type: string }) => item.type === "GEO_LOCATION").metadataJson).toBeUndefined();
-    expect(response.body.asset.careAgreements).toBeUndefined();
-    expect(response.body.asset.offers).toBeUndefined();
-    expect(response.body.asset.transactions).toBeUndefined();
+    const asset = response.body.asset;
+    const serialized = JSON.stringify(asset);
+    expect(asset.exactLatitude).toBeUndefined();
+    expect(asset.exactLongitude).toBeUndefined();
+    expect(asset.custodian).toBeUndefined();
+    expect(asset.careAgreements).toBeUndefined();
+    expect(asset.offers).toBeUndefined();
+    expect(asset.transactions).toBeUndefined();
+    expect(serialized).not.toContain("0900000000");
+    expect(serialized).not.toContain("buyer@greentrace.vn");
+    expect(serialized).not.toContain("private://");
+    expect(serialized).not.toContain("verifier@greentrace.vn");
+    expect(serialized).not.toContain("DEMO DATA · Lê Quang Huy");
+  });
+
+  it("keeps the public passport available without authentication", async () => {
+    expect(
+      (await request(app).get(`/api/public/passports/${operatorAssetCode}`)).status,
+    ).toBe(200);
   });
 });
 
 afterAll(async () => {
-  if (operator2Id) await prisma.user.update({ where: { id: operator2Id }, data: { role: "operator" } }).catch(() => undefined);
-  if (assetId) await prisma.asset.delete({ where: { id: assetId } }).catch(() => undefined);
+  for (const assetId of createdAssetIds.reverse())
+    await prisma.asset.delete({ where: { id: assetId } }).catch(() => undefined);
+  for (const userId of createdUserIds)
+    await prisma.user.delete({ where: { id: userId } }).catch(() => undefined);
+  if (foreignUserId)
+    await prisma.user.delete({ where: { id: foreignUserId } }).catch(() => undefined);
+  if (foreignOrganizationId)
+    await prisma.organization
+      .delete({ where: { id: foreignOrganizationId } })
+      .catch(() => undefined);
   await prisma.$disconnect();
 });

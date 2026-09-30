@@ -9,6 +9,7 @@ import { validate } from "../middleware/validate.js";
 import { verifySolanaTransaction } from "../services/solanaService.js";
 import { recalculateTrust } from "../services/trustProfileService.js";
 import { assetInclude } from "./assets.js";
+import { assertAssetAccess, AssetAccessError } from "../services/assetAccessService.js";
 
 export const passportRouter = Router();
 const chainSchema = z.object({
@@ -52,7 +53,13 @@ async function passportSnapshot(assetId: string) {
       validUntil: e.validUntil,
     })),
     attestations: asset.attestations
-      .filter((a) => a.decision === "APPROVED" && !a.revokedAt)
+      .filter(
+        (a) =>
+          a.decision === "APPROVED" &&
+          a.chainStatus === "CONFIRMED" &&
+          !a.revokedAt &&
+          (!a.expiresAt || a.expiresAt >= new Date()),
+      )
       .map((a) => ({
         evidenceId: a.evidenceId,
         verifierWallet: a.verifierWallet,
@@ -84,6 +91,13 @@ passportRouter.get(
   },
 );
 passportRouter.get("/assets/:id/passport", requireAuth, async (req, res) => {
+  try {
+    await assertAssetAccess(req.user!, String(req.params.id));
+  } catch (error) {
+    if (error instanceof AssetAccessError)
+      return res.status(error.status).json({ error: error.message });
+    throw error;
+  }
   const passport = await prisma.digitalPassport.findFirst({
     where: { assetId: String(req.params.id) },
     orderBy: { version: "desc" },
@@ -97,6 +111,13 @@ passportRouter.post(
   requireAuth,
   requireRole("operator", "admin"),
   async (req, res) => {
+    try {
+      await assertAssetAccess(req.user!, String(req.params.id), "manage");
+    } catch (error) {
+      if (error instanceof AssetAccessError)
+        return res.status(error.status).json({ error: error.message });
+      throw error;
+    }
     const snapshot = await passportSnapshot(String(req.params.id));
     res.json({ snapshot, passportHash: canonicalHash(snapshot) });
   },
@@ -107,6 +128,13 @@ passportRouter.post(
   requireRole("operator", "admin"),
   validate(chainSchema),
   async (req, res) => {
+    try {
+      await assertAssetAccess(req.user!, String(req.params.id), "manage");
+    } catch (error) {
+      if (error instanceof AssetAccessError)
+        return res.status(error.status).json({ error: error.message });
+      throw error;
+    }
     const snapshot = await passportSnapshot(String(req.params.id));
     if (canonicalHash(snapshot) !== req.body.passportHash)
       return res

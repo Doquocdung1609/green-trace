@@ -6,7 +6,7 @@ export const evidenceTypes = [
   "CARE_NOTE", "ENVIRONMENT_READING", "CERTIFICATE", "INSPECTION", "LAB_RESULT",
   "PROPAGATION_SOURCE", "AGE_DOCUMENT", "RIGHTS_DOCUMENT", "CUSTODY_DOCUMENT",
   "CARE_AGREEMENT", "BIOLOGICAL_MEASUREMENT", "BIOLOGICAL_INCIDENT", "HARVEST_RECORD",
-  "TRANSACTION_DOCUMENT", "OTHER",
+  "TRANSACTION_DOCUMENT", "INCIDENT_RESOLUTION", "OTHER",
 ] as const;
 export const scopes = [
   "EXISTENCE", "LOCATION", "AGE_OR_LIFECYCLE", "CERTIFICATE_VALIDITY",
@@ -26,10 +26,8 @@ export const registerSchema = z.object({
   password: z.string().min(10).max(128),
   fullName: z.string().min(2).max(100),
   phone: z.string().max(30).optional(),
-  role: z.enum(["operator", "reviewer", "buyer"]),
-  organizationName: z.string().max(120).optional(),
-  region: z.string().max(120).optional(),
-});
+  role: z.literal("buyer").optional().default("buyer"),
+}).strict();
 
 export const createAssetSchema = z.object({
   displayName: z.string().min(2).max(150),
@@ -95,18 +93,18 @@ export const incidentSchema = z.object({
   evidenceIds: z.array(z.string()).max(30).default([]),
 });
 export const updateIncidentSchema = z.object({
-  status: z.enum(["OPEN", "UNDER_REVIEW", "MITIGATING", "RESOLVED", "TOTAL_LOSS"]),
+  status: z.enum(["OPEN", "UNDER_REVIEW", "MITIGATING", "RESOLUTION_PENDING_VERIFICATION", "RESOLVED", "TOTAL_LOSS"]),
   resolutionNote: z.string().max(3000).optional(),
+  resolutionEvidenceId: z.string().optional(),
 });
 export const rightsSchema = z.object({
   rightType: z.string().min(2).max(100),
   holder: z.string().min(2).max(200),
   holderOrganizationId: z.string().optional(),
-  basisDocumentEvidenceId: z.string().optional(),
+  basisDocumentEvidenceId: z.string(),
   validFrom: z.coerce.date(),
   validUntil: z.coerce.date().optional(),
-  verifiedStatus: z.enum(["PENDING", "APPROVED", "REJECTED"]).default("PENDING"),
-});
+}).strict();
 export const custodySchema = z.object({
   physicalCustodian: z.string().min(2).max(200),
   custodianOrganizationId: z.string().optional(),
@@ -144,6 +142,7 @@ export const transactionSchema = z.object({
   custodyAfterSale: z.enum(["BUYER", "SELLER_OR_HTX"]),
   notes: z.string().max(2000).optional(),
 });
+export const reserveOfferSchema = z.object({ buyerId: z.string() });
 export const reviewCaseSchema = z.object({
   purpose: z.enum(["REAL_ASSET_TRANSFER", "FINANCIAL_REVIEW", "INSURANCE", "CREDIT", "RWA_PARTNER_REVIEW"]),
   assetId: z.string(),

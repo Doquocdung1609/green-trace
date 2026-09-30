@@ -1,5 +1,7 @@
 # GreenTrace
 
+[![CI](https://github.com/Doquocdung1609/green-trace/actions/workflows/ci.yml/badge.svg)](https://github.com/Doquocdung1609/green-trace/actions/workflows/ci.yml)
+
 **Hạ tầng định danh và xác minh tài sản nông nghiệp trước khi tài chính hóa.**
 
 GreenTrace 3.0 tổ chức dữ liệu của tài sản sinh học ngoài đời thành một hồ sơ có thể kiểm tra: tài sản nào, ở đâu, ai đang quản lý, bằng chứng đến từ đâu, ai đã xác minh trong phạm vi nào, quyền và lưu ký thuộc về ai, lịch sử sinh học thay đổi ra sao và hồ sơ còn thiếu hoặc bất thường ở điểm nào.
@@ -32,8 +34,8 @@ Express + Zod + role guards
 Prisma ─┼─ SQLite local / PostgreSQL production target
         ├─ private object storage
         ├─ IPFS/Pinata for suitable public evidence
-        └─ Solana devnet integrity records
-             └─ Anchor green_trace_registry
+        └─ Solana devnet transaction + Memo integrity records
+             └─ Anchor green_trace_registry (kiến trúc mở rộng, tùy chọn)
 ```
 
 Source chính:
@@ -75,7 +77,7 @@ Trust chỉ đo chất lượng hồ sơ và bị chặn trong khoảng 0–100.
 
 Solana là lớp ghi nhận tính toàn vẹn, không phải nguồn sự thật ngoài đời. Transaction ghi hash payload, signer, timestamp và reference. Phantom ký ở client; server không nhận seed phrase hoặc private key. Backend chỉ đánh dấu `CONFIRMED` sau khi xác nhận transaction với RPC.
 
-Anchor program hỗ trợ `initialize_registry`, `register_asset`, `record_evidence_hash`, `create_attestation`, `record_lifecycle_event`, `update_passport_root` và `revoke_attestation`.
+Flow MVP hiện tại neo hash và attestation bằng Solana transaction + Memo. Anchor Registry là kiến trúc mở rộng, không phải dependency bắt buộc của flow demo hiện tại. Chương trình Anchor trong repository hỗ trợ `initialize_registry`, `register_asset`, `record_evidence_hash`, `create_attestation`, `record_lifecycle_event`, `update_passport_root` và `revoke_attestation` khi được triển khai riêng.
 
 Backend đối chiếu signer, loại record và payload hash trong Solana memo trước khi xác nhận. Một chữ ký cũ không thể được tái sử dụng cho hồ sơ khác. Verifier có thể thu hồi attestation bằng đúng ví đã ký; việc thu hồi tạo transaction và audit event riêng.
 
@@ -145,10 +147,11 @@ Tất cả dùng mật khẩu `GreenTrace123!`:
 | `verifier@greentrace.vn` | verifier |
 | `lab@greentrace.vn` | verifier (LAB) |
 | `reviewer@greentrace.vn` | reviewer |
+| `reviewer2@greentrace.vn` | reviewer (dùng kiểm tra claim locking) |
 | `buyer@greentrace.vn` | buyer |
 | `admin@greentrace.vn` | admin |
 
-Seed gồm 9 hồ sơ Sâm Ngọc Linh: hồ sơ đầy đủ có lịch sử sự cố đã xử lý, thiếu chứng nhận, GPS bất thường, sự cố sâu bệnh đang mở, attestation hết hạn, hồ sơ mới, đang chào bán, đã bán nhưng vẫn sinh trưởng và quyền đang chờ.
+Seed gồm 7 hồ sơ deterministic, đều được đánh dấu `DEMO DATA`: hồ sơ tốt, chứng nhận cũ, bệnh HIGH đang mở, sự cố đã xác minh khắc phục, đang chào bán, đã bán nhưng vẫn sinh trưởng/custody vẫn tại HTX, và sẵn sàng thu hoạch.
 
 ## Demo flow
 
@@ -160,9 +163,9 @@ Seed gồm 9 hồ sơ Sâm Ngọc Linh: hồ sơ đầy đủ có lịch sử s�
 6. Backend xác nhận signature, tạo attestation và tính lại trust profile.
 7. Operator bổ sung bằng chứng, chuyển vòng đời hợp lệ và tạo phiên bản passport mới có passport root transaction.
 8. Operator theo dõi Risk, Rights, Custody, Care, tạo đề nghị mua đứt; buyer gửi yêu cầu mua và xem `/my-assets`.
-9. Operator gắn tài liệu quyền/giao dịch để hoàn tất mua đứt; trạng thái sinh học vẫn độc lập với `SOLD` và lưu ký tại HTX.
+9. Operator chọn purchase request để reserve đúng buyer, sau đó chỉ hoàn tất khi tài liệu quyền đã xác minh, attestation còn hiệu lực, readiness đạt và không có sự cố HIGH/CRITICAL đang mở; trạng thái sinh học vẫn độc lập với `SOLD` và lưu ký tại HTX.
 10. Buyer yêu cầu thu hoạch hoặc bàn giao; operator xác nhận lịch. Hoàn tất thu hoạch bị chặn cho tới khi có `HARVEST_RECORD` đã xác minh.
-11. Reviewer xử lý ReviewCase theo mục đích; public passport hiển thị 10 nhóm dữ liệu nhưng không lộ GPS chính xác, tài liệu private hay giá giao dịch.
+11. Reviewer claim ReviewCase atomically trước khi quyết định; public passport hiển thị hồ sơ đã biên tập nhưng không lộ GPS chính xác, PII, tài liệu private hay giá giao dịch.
 
 ## Tests and build
 
