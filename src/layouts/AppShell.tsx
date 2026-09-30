@@ -16,6 +16,7 @@ import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { WalletStatus } from "../components/ui/WalletStatus";
 import { useAuth } from "../hooks/useAuth";
+import { SAMPLE_PASSPORT_PATH } from "../lib/demoData";
 import { roleLabels, type UserRole } from "../types/domain";
 
 const navByRole: Record<
@@ -79,7 +80,7 @@ export function AppShell() {
               {label}
             </NavLink>
           ))}
-          <NavLink to="/passport/GT-NL-2026-000128">
+          <NavLink to={SAMPLE_PASSPORT_PATH}>
             <FileBadge size={18} />
             Hộ chiếu mẫu
           </NavLink>

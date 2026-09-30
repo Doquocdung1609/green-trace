@@ -548,6 +548,13 @@ describe.sequential("GreenTrace final hardening acceptance", () => {
     expect(
       (await request(app).get(`/api/public/passports/${operatorAssetCode}`)).status,
     ).toBe(200);
+    expect(
+      (
+        await request(app).get(
+          "/api/public/passports/GT-NL-2026-DEMOA001",
+        )
+      ).status,
+    ).toBe(200);
   });
 });
 

@@ -5,6 +5,10 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AuthProvider } from "./contexts/AuthProvider";
 import { ToastProvider } from "./contexts/ToastProvider";
 import { AppShell } from "./layouts/AppShell";
+import {
+  LEGACY_SAMPLE_PASSPORT_CODE,
+  SAMPLE_PASSPORT_PATH,
+} from "./lib/demoData";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { Login } from "./pages/auth/Login";
 import { Register } from "./pages/auth/Register";
@@ -38,6 +42,10 @@ export default function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+                <Route
+                  path={`/passport/${LEGACY_SAMPLE_PASSPORT_CODE}`}
+                  element={<Navigate to={SAMPLE_PASSPORT_PATH} replace />}
+                />
                 <Route
                   path="/passport/:assetCode"
                   element={<AssetPassport />}

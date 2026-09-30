@@ -14,6 +14,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { TrustScore } from "../../components/ui/TrustScore";
+import {
+  SAMPLE_PASSPORT_CODE,
+  SAMPLE_PASSPORT_PATH,
+} from "../../lib/demoData";
 import { api } from "../../services/apiClient";
 import type { Asset } from "../../types/domain";
 
@@ -54,7 +58,8 @@ export function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { data: sampleData } = useQuery({
     queryKey: ["home-sample-passport"],
-    queryFn: () => api.get<{ asset: Asset }>("/public/passports/GT-NL-2026-000128"),
+    queryFn: () =>
+      api.get<{ asset: Asset }>(`/public/passports/${SAMPLE_PASSPORT_CODE}`),
     retry: false,
   });
   const sample = sampleData?.asset;
@@ -72,7 +77,7 @@ export function Home() {
         <nav className={menuOpen ? "open" : ""} aria-label="Điều hướng chính">
           <a href="#how" onClick={() => setMenuOpen(false)}>Cách hoạt động</a>
           <a href="#trust" onClick={() => setMenuOpen(false)}>Mô hình tin cậy</a>
-          <Link to="/passport/GT-NL-2026-000128" onClick={() => setMenuOpen(false)}>Hộ chiếu mẫu</Link>
+          <Link to={SAMPLE_PASSPORT_PATH} onClick={() => setMenuOpen(false)}>Hộ chiếu mẫu</Link>
           <a href="#about" onClick={() => setMenuOpen(false)}>Về chúng tôi</a>
         </nav>
         <div className="public-nav-actions">
@@ -104,7 +109,7 @@ export function Home() {
               <Link className="button primary" to="/login">
                 Vào hệ thống <ArrowRight size={18} />
               </Link>
-              <Link className="text-link" to="/passport/GT-NL-2026-000128">
+              <Link className="text-link" to={SAMPLE_PASSPORT_PATH}>
                 Xem hộ chiếu mẫu
               </Link>
             </div>
@@ -192,7 +197,7 @@ export function Home() {
           <p className="eyebrow"><FileCheck2 size={16} /> Hộ chiếu mẫu</p>
           <h2>Xem cách một hồ sơ tài sản thực tế được trình bày</h2>
           <p className="muted">Khám phá cấu trúc dữ liệu, điểm tin cậy, bằng chứng, cảnh báo và lịch sử blockchain của hồ sơ minh họa.</p>
-          <Link className="button primary" to="/passport/GT-NL-2026-000128">Xem hộ chiếu mẫu <ArrowRight size={17} /></Link>
+          <Link className="button primary" to={SAMPLE_PASSPORT_PATH}>Xem hộ chiếu mẫu <ArrowRight size={17} /></Link>
         </section>
       </main>
       <footer className="public-footer">
